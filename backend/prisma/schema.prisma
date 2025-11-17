@@ -1,0 +1,295 @@
+// Prisma schema for Neighbors-Kitchen
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  CHEF
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum PickupOrDelivery {
+  PICKUP
+  DELIVERY
+}
+
+enum MealCategory {
+  BREAKFAST
+  LUNCH
+  DINNER
+  DESSERT
+  SNACK
+}
+
+enum SuggestionStatus {
+  PENDING
+  CONSIDERING
+  ACCEPTED
+  DECLINED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id                      String    @id @default(uuid())
+  email                   String    @unique
+  passwordHash            String    @map("password_hash")
+  role                    UserRole  @default(CUSTOMER)
+  firstName               String    @map("first_name")
+  lastName                String    @map("last_name")
+  phone                   String?
+  profilePhotoUrl         String?   @map("profile_photo_url")
+  emailVerified           Boolean   @default(false) @map("email_verified")
+  emailVerificationToken  String?   @map("email_verification_token")
+  passwordResetToken      String?   @map("password_reset_token")
+  passwordResetExpires    DateTime? @map("password_reset_expires")
+  isActive                Boolean   @default(true) @map("is_active")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  chefProfile             ChefProfile?
+  ordersAsCustomer        Order[]      @relation("CustomerOrders")
+  reviews                 Review[]
+  suggestions             Suggestion[]
+
+  @@map("users")
+}
+
+model ChefProfile {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique @map("user_id")
+  bio                     String?  @db.Text
+  specialties             String[]
+  yearsExperience         Int?     @map("years_experience")
+  certifications          String[]
+  stripeConnectAccountId  String?  @map("stripe_connect_account_id")
+  stripeOnboardingComplete Boolean @default(false) @map("stripe_onboarding_complete")
+  addressLine1            String   @map("address_line1")
+  addressLine2            String?  @map("address_line2")
+  city                    String
+  state                   String
+  zipCode                 String   @map("zip_code")
+  latitude                Decimal  @db.Decimal(10, 8)
+  longitude               Decimal  @db.Decimal(11, 8)
+  serviceRadiusMiles      Decimal  @default(5.0) @map("service_radius_miles") @db.Decimal(5, 2)
+  averageRating           Decimal? @map("average_rating") @db.Decimal(3, 2)
+  totalReviews            Int      @default(0) @map("total_reviews")
+  totalOrders             Int      @default(0) @map("total_orders")
+  isAcceptingOrders       Boolean  @default(true) @map("is_accepting_orders")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user                    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  menus                   Menu[]
+  meals                   Meal[]
+  ordersAsChef            Order[]      @relation("ChefOrders")
+  reviews                 Review[]
+  suggestions             Suggestion[]
+
+  @@index([userId])
+  @@index([latitude, longitude])
+  @@map("chef_profiles")
+}
+
+model Menu {
+  id              String    @id @default(uuid())
+  chefId          String    @map("chef_id")
+  name            String
+  description     String?   @db.Text
+  isActive        Boolean   @default(true) @map("is_active")
+  availableFrom   DateTime? @map("available_from")
+  availableUntil  DateTime? @map("available_until")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  chef            ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+  meals           Meal[]
+
+  @@index([chefId])
+  @@map("menus")
+}
+
+model Meal {
+  id                String       @id @default(uuid())
+  menuId            String       @map("menu_id")
+  chefId            String       @map("chef_id")
+  name              String
+  description       String       @db.Text
+  price             Decimal      @db.Decimal(10, 2)
+  imageUrl          String?      @map("image_url")
+  category          MealCategory
+  cuisineType       String?      @map("cuisine_type")
+  dietaryTags       String[]     @map("dietary_tags")
+  servings          Int          @default(1)
+  prepTimeMinutes   Int          @map("prep_time_minutes")
+  isAvailable       Boolean      @default(true) @map("is_available")
+  maxOrdersPerDay   Int?         @map("max_orders_per_day")
+  averageRating     Decimal?     @map("average_rating") @db.Decimal(3, 2)
+  totalReviews      Int          @default(0) @map("total_reviews")
+  totalOrders       Int          @default(0) @map("total_orders")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  menu              Menu         @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  chef              ChefProfile  @relation(fields: [chefId], references: [id], onDelete: Cascade)
+  orderItems        OrderItem[]
+  reviews           Review[]
+
+  @@index([chefId])
+  @@index([category])
+  @@map("meals")
+}
+
+model Order {
+  id                  String            @id @default(uuid())
+  orderNumber         String            @unique @map("order_number")
+  customerId          String            @map("customer_id")
+  chefId              String            @map("chef_id")
+  status              OrderStatus       @default(PENDING)
+  subtotal            Decimal           @db.Decimal(10, 2)
+  platformFee         Decimal           @map("platform_fee") @db.Decimal(10, 2)
+  total               Decimal           @db.Decimal(10, 2)
+  paymentStatus       PaymentStatus     @default(PENDING) @map("payment_status")
+  paymentIntentId     String?           @map("payment_intent_id")
+  pickupOrDelivery    PickupOrDelivery  @map("pickup_or_delivery")
+  scheduledFor        DateTime          @map("scheduled_for")
+  deliveryAddress     String?           @map("delivery_address") @db.Text
+  specialInstructions String?           @map("special_instructions") @db.Text
+  customerNotes       String?           @map("customer_notes") @db.Text
+  chefNotes           String?           @map("chef_notes") @db.Text
+  cancellationReason  String?           @map("cancellation_reason") @db.Text
+  cancelledAt         DateTime?         @map("cancelled_at")
+  completedAt         DateTime?         @map("completed_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  customer            User              @relation("CustomerOrders", fields: [customerId], references: [id])
+  chef                ChefProfile       @relation("ChefOrders", fields: [chefId], references: [id])
+  orderItems          OrderItem[]
+  payment             Payment?
+  review              Review?
+
+  @@index([customerId])
+  @@index([chefId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                String   @id @default(uuid())
+  orderId           String   @map("order_id")
+  mealId            String   @map("meal_id")
+  quantity          Int
+  priceAtPurchase   Decimal  @map("price_at_purchase") @db.Decimal(10, 2)
+  specialRequests   String?  @map("special_requests") @db.Text
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relations
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  meal              Meal     @relation(fields: [mealId], references: [id])
+
+  @@map("order_items")
+}
+
+model Review {
+  id                String    @id @default(uuid())
+  orderId           String    @unique @map("order_id")
+  mealId            String    @map("meal_id")
+  chefId            String    @map("chef_id")
+  customerId        String    @map("customer_id")
+  rating            Int
+  title             String?
+  comment           String?   @db.Text
+  images            String[]
+  isVerifiedPurchase Boolean  @default(true) @map("is_verified_purchase")
+  isFlagged         Boolean   @default(false) @map("is_flagged")
+  flagReason        String?   @map("flag_reason") @db.Text
+  chefResponse      String?   @map("chef_response") @db.Text
+  chefRespondedAt   DateTime? @map("chef_responded_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  order             Order       @relation(fields: [orderId], references: [id])
+  meal              Meal        @relation(fields: [mealId], references: [id])
+  chef              ChefProfile @relation(fields: [chefId], references: [id])
+  customer          User        @relation(fields: [customerId], references: [id])
+
+  @@index([chefId])
+  @@index([mealId])
+  @@map("reviews")
+}
+
+model Suggestion {
+  id                  String            @id @default(uuid())
+  chefId              String            @map("chef_id")
+  customerId          String            @map("customer_id")
+  mealName            String            @map("meal_name")
+  description         String            @db.Text
+  dietaryRequirements String[]          @map("dietary_requirements")
+  status              SuggestionStatus  @default(PENDING)
+  chefResponse        String?           @map("chef_response") @db.Text
+  priority            Priority          @default(MEDIUM)
+  votes               Int               @default(1)
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  chef                ChefProfile       @relation(fields: [chefId], references: [id])
+  customer            User              @relation(fields: [customerId], references: [id])
+
+  @@map("suggestions")
+}
+
+model Payment {
+  id                      String        @id @default(uuid())
+  orderId                 String        @unique @map("order_id")
+  stripePaymentIntentId   String        @unique @map("stripe_payment_intent_id")
+  amount                  Decimal       @db.Decimal(10, 2)
+  platformFee             Decimal       @map("platform_fee") @db.Decimal(10, 2)
+  chefPayout              Decimal       @map("chef_payout") @db.Decimal(10, 2)
+  status                  PaymentStatus @default(PENDING)
+  refundAmount            Decimal?      @map("refund_amount") @db.Decimal(10, 2)
+  refundReason            String?       @map("refund_reason") @db.Text
+  payoutId                String?       @map("payout_id")
+  paidOutAt               DateTime?     @map("paid_out_at")
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  order                   Order         @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
