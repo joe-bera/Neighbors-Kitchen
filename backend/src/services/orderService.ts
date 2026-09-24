@@ -1,11 +1,14 @@
 import crypto from 'node:crypto';
-import { OrderStatus, Prisma } from '@prisma/client';
+import { ChefProfile, OrderStatus, Prisma } from '@prisma/client';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { PlaceOrderInput } from '../validators/orderSchemas.js';
 import { chefDisplayName, chefSummarySelect, orderableMealOwnWhere, toChefSummary, visibleChefWhere } from './catalogShared.js';
+import { distanceMiles, roundToTenth } from './geo.js';
+import { geocodeAddress } from './geocoding.js';
 import { requireOwnKitchen } from './kitchenService.js';
+import { areaCenter } from './locationService.js';
 import { orderReviewSelect } from './reviewService.js';
 import { isOrderSlot, localDayBounds } from './scheduling.js';
 
@@ -118,7 +121,28 @@ function chefView(order: OrderRow) {
     chefPayout: money(order.total.sub(order.platformFee)),
     nextStatus: NEXT_STATUS[order.status] ?? null,
     canCancel: OPEN_STATUSES.includes(order.status),
+    deliveryDistanceMiles: order.deliveryDistanceMiles?.toNumber() ?? null,
   };
+}
+
+/**
+ * Miles from the chef's public area to a delivery address, or null when either cannot be placed on
+ * the map (the order then goes ahead, and the chef can decline it). Refuses addresses farther than
+ * the chef delivers.
+ */
+async function deliveryDistance(chef: ChefProfile, address: string): Promise<number | null> {
+  const kitchenArea = areaCenter(chef);
+  if (!kitchenArea) return null;
+  const destination = await geocodeAddress(address);
+  if (!destination) return null;
+
+  const miles = roundToTenth(distanceMiles(kitchenArea, destination));
+  const limit = chef.serviceRadiusMiles.toNumber();
+  if (miles > limit) {
+    const message = `${chef.kitchenName ?? 'This chef'} delivers up to ${limit} miles from their kitchen. This address is about ${miles} miles away. Please choose pickup or another address.`;
+    throw new AppError(409, 'OUTSIDE_DELIVERY_AREA', message, { deliveryAddress: message });
+  }
+  return miles;
 }
 
 export async function placeOrder(userId: string, input: PlaceOrderInput) {
@@ -143,6 +167,8 @@ export async function placeOrder(userId: string, input: PlaceOrderInput) {
       scheduledFor: 'Choose one of the available times',
     });
   }
+  // Looked up before the transaction: never hold database locks while waiting on another service.
+  const deliveryDistanceMiles = isDelivery ? await deliveryDistance(chef, input.deliveryAddress ?? '') : null;
 
   const order = await prisma.$transaction(async (tx) => {
     const mealIds = input.items.map((item) => item.mealId);
@@ -196,6 +222,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput) {
         pickupOrDelivery: input.pickupOrDelivery,
         scheduledFor: input.scheduledFor,
         deliveryAddress: isDelivery ? input.deliveryAddress : null,
+        deliveryDistanceMiles,
         contactPhone: input.contactPhone,
         specialInstructions: input.specialInstructions,
         orderItems: { create: lines },
