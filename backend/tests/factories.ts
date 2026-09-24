@@ -13,6 +13,8 @@ interface ChefOptions {
   specialties?: string[];
   isActive?: boolean;
   menuIsActive?: boolean;
+  /** Public area center; leave out for a chef who is not on the map. */
+  area?: { latitude: number; longitude: number };
 }
 
 export async function createChef(options: ChefOptions = {}) {
@@ -41,6 +43,8 @@ export async function createChef(options: ChefOptions = {}) {
       zipCode: '92373',
       latitude: 34.0556,
       longitude: -117.1825,
+      approxLatitude: options.area?.latitude ?? null,
+      approxLongitude: options.area?.longitude ?? null,
     },
   });
   const menu = await prisma.menu.create({

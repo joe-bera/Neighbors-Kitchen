@@ -1,7 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/errors.js';
-import { ChefListQuery } from '../validators/catalogSchemas.js';
+import { ChefListQuery, ChefMapQuery } from '../validators/catalogSchemas.js';
+import { distanceMiles, LatLng, roundToTenth } from './geo.js';
+import { areaCenter, resolveOrigin, toArea } from './locationService.js';
 import { listOrderSlots } from './scheduling.js';
 import {
   chefDisplayName,
@@ -29,7 +31,7 @@ const chefCardInclude = {
 
 type ChefCardRow = Prisma.ChefProfileGetPayload<{ include: typeof chefCardInclude }>;
 
-function toChefCard(chef: ChefCardRow) {
+function toChefCard(chef: ChefCardRow, distance: number | null = null) {
   return {
     id: chef.id,
     kitchenName: chef.kitchenName,
@@ -46,6 +48,7 @@ function toChefCard(chef: ChefCardRow) {
     isAcceptingOrders: chef.isAcceptingOrders,
     mealCount: chef._count.meals,
     coverImageUrl: chef.meals[0]?.imageUrl ?? null,
+    distanceMiles: distance === null ? null : roundToTenth(distance),
   };
 }
 
@@ -72,11 +75,11 @@ function chefSearchWhere(term: string): Prisma.ChefProfileWhereInput {
   };
 }
 
-export async function listChefs({ search, city, cuisine, page, limit }: ChefListQuery) {
-  const filters: Prisma.ChefProfileWhereInput[] = [
-    visibleChefWhere,
-    { meals: { some: orderableMealOwnWhere } },
-  ];
+type ChefFilters = Pick<ChefListQuery, 'search' | 'city' | 'cuisine'>;
+
+/** Chefs a search can show: visible, with something to order, matching the text, city and cuisine filters. */
+function chefListWhere({ search, city, cuisine }: ChefFilters): Prisma.ChefProfileWhereInput {
+  const filters: Prisma.ChefProfileWhereInput[] = [visibleChefWhere, { meals: { some: orderableMealOwnWhere } }];
   if (search) filters.push(chefSearchWhere(search));
   if (city) filters.push({ city: { equals: city, mode: 'insensitive' } });
   if (cuisine) {
@@ -87,20 +90,121 @@ export async function listChefs({ search, city, cuisine, page, limit }: ChefList
       ],
     });
   }
-  const where: Prisma.ChefProfileWhereInput = { AND: filters };
+  return { AND: filters };
+}
 
-  const [total, chefs] = await prisma.$transaction([
-    prisma.chefProfile.count({ where }),
-    prisma.chefProfile.findMany({
-      where,
-      include: chefCardInclude,
+const hasArea = { approxLatitude: { not: null }, approxLongitude: { not: null } } satisfies Prisma.ChefProfileWhereInput;
+
+interface RankedChef {
+  id: string;
+  distance: number;
+}
+
+/**
+ * Chefs with a map area, nearest to `origin` first (ties in id order), within `maxDistance` miles when given.
+ * Distances are measured to each chef's public area center, never to their real location.
+ */
+async function rankByDistance(where: Prisma.ChefProfileWhereInput, origin: LatLng, maxDistance?: number) {
+  const rows = await prisma.chefProfile.findMany({
+    where: { AND: [where, hasArea] },
+    select: { id: true, approxLatitude: true, approxLongitude: true },
+  });
+  return rows
+    .map((row): RankedChef => ({ id: row.id, distance: distanceMiles(origin, areaCenter(row)!) }))
+    .filter((row) => maxDistance === undefined || row.distance <= maxDistance)
+    .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id));
+}
+
+/** Rows in ranking order. A chef hidden between the two queries is skipped. */
+function inRankedOrder<T extends { id: string }>(ranked: RankedChef[], rows: T[]) {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return ranked.flatMap(({ id, distance }) => {
+    const row = byId.get(id);
+    return row ? [{ row, distance }] : [];
+  });
+}
+
+export async function listChefs(query: ChefListQuery) {
+  const { page, limit } = query;
+  const where = chefListWhere(query);
+  const origin = resolveOrigin(query);
+
+  if (!origin) {
+    const [total, chefs] = await prisma.$transaction([
+      prisma.chefProfile.count({ where }),
+      prisma.chefProfile.findMany({
+        where,
+        include: chefCardInclude,
+        orderBy: recommendedOrder,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+    // An arrow function, so map's index is never taken for a distance.
+    return { chefs: chefs.map((chef) => toChefCard(chef)), pagination: paginationMeta(page, limit, total) };
+  }
+
+  const ranked = await rankByDistance(where, origin, query.maxDistance);
+  const onThisPage = ranked.slice((page - 1) * limit, page * limit);
+  const cards = await prisma.chefProfile.findMany({
+    where: { id: { in: onThisPage.map((chef) => chef.id) } },
+    include: chefCardInclude,
+  });
+  return {
+    chefs: inRankedOrder(onThisPage, cards).map(({ row, distance }) => toChefCard(row, distance)),
+    pagination: paginationMeta(page, limit, ranked.length),
+  };
+}
+
+const MAP_LIMIT = 500;
+
+const mapPinSelect = {
+  id: true,
+  kitchenName: true,
+  city: true,
+  averageRating: true,
+  totalReviews: true,
+  isAcceptingOrders: true,
+  approxLatitude: true,
+  approxLongitude: true,
+  user: { select: { firstName: true, lastName: true } },
+} satisfies Prisma.ChefProfileSelect;
+
+type MapPinRow = Prisma.ChefProfileGetPayload<{ select: typeof mapPinSelect }>;
+
+function toMapPin(chef: MapPinRow, distance: number | null) {
+  return {
+    id: chef.id,
+    kitchenName: chef.kitchenName,
+    chefName: chefDisplayName(chef.user),
+    firstName: chef.user.firstName,
+    city: chef.city,
+    averageRating: chef.averageRating?.toNumber() ?? null,
+    totalReviews: chef.totalReviews,
+    isAcceptingOrders: chef.isAcceptingOrders,
+    distanceMiles: distance === null ? null : roundToTenth(distance),
+    area: toArea(chef),
+  };
+}
+
+/** Every matching chef's public area for the map, nearest first when searching from a place. */
+export async function listChefsForMap(query: ChefMapQuery) {
+  const where = chefListWhere(query);
+  const origin = resolveOrigin(query);
+
+  if (!origin) {
+    const chefs = await prisma.chefProfile.findMany({
+      where: { AND: [where, hasArea] },
+      select: mapPinSelect,
       orderBy: recommendedOrder,
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-  ]);
+      take: MAP_LIMIT,
+    });
+    return { origin: null, chefs: chefs.map((chef) => toMapPin(chef, null)) };
+  }
 
-  return { chefs: chefs.map(toChefCard), pagination: paginationMeta(page, limit, total) };
+  const ranked = (await rankByDistance(where, origin, query.maxDistance)).slice(0, MAP_LIMIT);
+  const rows = await prisma.chefProfile.findMany({ where: { id: { in: ranked.map((chef) => chef.id) } }, select: mapPinSelect });
+  return { origin, chefs: inRankedOrder(ranked, rows).map(({ row, distance }) => toMapPin(row, distance)) };
 }
 
 /** The pre-order times a customer can pick from right now. */
@@ -141,6 +245,7 @@ export async function getChefProfile(id: string) {
     ...toChefCard(chef),
     certifications: chef.certifications,
     serviceRadiusMiles: chef.serviceRadiusMiles.toNumber(),
+    area: toArea(chef),
     memberSince: chef.createdAt,
     availability: chef.availability,
     orderLeadTimeHours: chef.orderLeadTimeHours,

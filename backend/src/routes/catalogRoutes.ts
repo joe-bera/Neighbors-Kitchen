@@ -11,6 +11,7 @@ import { kitchenProfileSchema } from '../validators/kitchenSchemas.js';
 
 export const chefRoutes = Router();
 chefRoutes.get('/', catalogController.listChefs);
+chefRoutes.get('/map', catalogController.listChefsForMap); // before /:id, so "map" is not read as a chef id
 chefRoutes.post('/', requireAuth, validateBody(kitchenProfileSchema), kitchenController.becomeChef);
 chefRoutes.get('/:id', catalogController.getChef);
 chefRoutes.get('/:id/order-slots', catalogController.getOrderSlots);

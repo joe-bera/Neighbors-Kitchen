@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { AppError } from '../utils/errors.js';
 import { AREA_RADIUS_MILES, approximateLocation, LatLng } from './geo.js';
 import { geocodeAddress } from './geocoding.js';
 import { zipCentroid } from './zipCodes.js';
@@ -47,4 +48,17 @@ export function areaCenter(chef: AreaColumns): LatLng | null {
 export function toArea(chef: AreaColumns) {
   const center = areaCenter(chef);
   return center && { ...center, radiusMiles: AREA_RADIUS_MILES };
+}
+
+/** The point a chef search starts from: the middle of a ZIP code, or the browser's location. */
+export function resolveOrigin(query: { near?: string; lat?: number; lng?: number }): LatLng | null {
+  if (query.near) {
+    const center = zipCentroid(query.near);
+    if (!center) {
+      throw new AppError(422, 'UNKNOWN_ZIP', `We could not find ZIP code ${query.near}`, { near: 'Check the ZIP code' });
+    }
+    return center;
+  }
+  if (query.lat !== undefined && query.lng !== undefined) return { latitude: query.lat, longitude: query.lng };
+  return null;
 }

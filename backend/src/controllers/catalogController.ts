@@ -2,11 +2,16 @@ import { Request, Response } from 'express';
 import { parseInput } from '../middleware/validateRequest.js';
 import * as chefService from '../services/chefService.js';
 import * as mealService from '../services/mealService.js';
-import { chefListQuerySchema, mealListQuerySchema } from '../validators/catalogSchemas.js';
+import { chefListQuerySchema, chefMapQuerySchema, mealListQuerySchema } from '../validators/catalogSchemas.js';
 
 export async function listChefs(req: Request, res: Response) {
   const { chefs, pagination } = await chefService.listChefs(parseInput(chefListQuerySchema, req.query));
   res.status(200).json({ success: true, data: chefs, pagination });
+}
+
+export async function listChefsForMap(req: Request, res: Response) {
+  const map = await chefService.listChefsForMap(parseInput(chefMapQuerySchema, req.query));
+  res.status(200).json({ success: true, data: map });
 }
 
 export async function getChef(req: Request<{ id: string }>, res: Response) {
