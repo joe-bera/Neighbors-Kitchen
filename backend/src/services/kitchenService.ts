@@ -2,8 +2,12 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { AvailabilityInput, KitchenProfileInput, KitchenUpdateInput } from '../validators/kitchenSchemas.js';
+import { locateKitchen, toArea } from './locationService.js';
 
 // A chef's own view of their kitchen, including private details such as the street address.
+
+// Changing any of these moves the kitchen on the map (the apartment line does not).
+const ADDRESS_FIELDS = ['addressLine1', 'city', 'state', 'zipCode'] as const;
 
 const ownKitchenInclude = {
   availability: {
@@ -28,6 +32,8 @@ function toOwnKitchen(chef: OwnKitchenRow) {
     city: chef.city,
     state: chef.state,
     zipCode: chef.zipCode,
+    // Where neighbors see the kitchen: an approximate area, never the street address.
+    area: toArea(chef),
     serviceRadiusMiles: chef.serviceRadiusMiles.toNumber(),
     isAcceptingOrders: chef.isAcceptingOrders,
     orderLeadTimeHours: chef.orderLeadTimeHours,
@@ -60,11 +66,12 @@ export async function becomeChef(userId: string, input: KitchenProfileInput) {
   const existing = await prisma.chefProfile.findUnique({ where: { userId }, select: { id: true } });
   if (existing) throw new AppError(409, 'ALREADY_CHEF', 'You already have a kitchen');
 
+  const location = await locateKitchen(input);
   try {
     const chef = await prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: userId }, data: { role: 'CHEF' } });
       return tx.chefProfile.create({
-        data: { ...input, userId, menus: { create: { name: 'Menu' } } },
+        data: { ...input, ...location, userId, menus: { create: { name: 'Menu' } } },
         include: ownKitchenInclude,
       });
     });
@@ -85,8 +92,20 @@ export async function getOwnKitchen(userId: string) {
 }
 
 export async function updateOwnKitchen(userId: string, input: KitchenUpdateInput) {
-  const { id } = await requireOwnKitchen(userId);
-  const chef = await prisma.chefProfile.update({ where: { id }, data: input, include: ownKitchenInclude });
+  const current = await requireOwnKitchen(userId);
+  const address = {
+    addressLine1: input.addressLine1 ?? current.addressLine1,
+    city: input.city ?? current.city,
+    state: input.state ?? current.state,
+    zipCode: input.zipCode ?? current.zipCode,
+  };
+  const moved = ADDRESS_FIELDS.some((field) => address[field] !== current[field]);
+  const location = moved ? await locateKitchen(address) : {};
+  const chef = await prisma.chefProfile.update({
+    where: { id: current.id },
+    data: { ...input, ...location },
+    include: ownKitchenInclude,
+  });
   return toOwnKitchen(chef);
 }
 

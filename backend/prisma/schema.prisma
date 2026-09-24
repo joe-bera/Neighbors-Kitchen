@@ -120,6 +120,9 @@ model ChefProfile {
   // Filled in by geocoding (Phase 7); never sent in public responses
   latitude                Decimal? @db.Decimal(10, 8)
   longitude               Decimal? @db.Decimal(11, 8)
+  // Public area center: the location moved 0.1-0.3 miles in a random direction (services/geo.ts)
+  approxLatitude          Decimal? @map("approx_latitude") @db.Decimal(9, 6)
+  approxLongitude         Decimal? @map("approx_longitude") @db.Decimal(9, 6)
   serviceRadiusMiles      Decimal  @default(5.0) @map("service_radius_miles") @db.Decimal(5, 2)
   averageRating           Decimal? @map("average_rating") @db.Decimal(3, 2)
   totalReviews            Int      @default(0) @map("total_reviews")
@@ -231,6 +234,8 @@ model Order {
   pickupOrDelivery    PickupOrDelivery  @map("pickup_or_delivery")
   scheduledFor        DateTime          @map("scheduled_for")
   deliveryAddress     String?           @map("delivery_address") @db.Text
+  // Straight-line miles from the chef's area center to the delivery address, when it could be located
+  deliveryDistanceMiles Decimal?        @map("delivery_distance_miles") @db.Decimal(5, 1)
   contactPhone        String?           @map("contact_phone")
   specialInstructions String?           @map("special_instructions") @db.Text
   customerNotes       String?           @map("customer_notes") @db.Text
