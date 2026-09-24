@@ -4,12 +4,15 @@ import PageLoader from '../components/common/PageLoader'
 import SearchForm from '../components/common/SearchForm'
 import Footer from '../components/layout/Footer'
 import Navbar from '../components/layout/Navbar'
+import NearMeForm from '../components/location/NearMeForm'
 import MealCard from '../components/meal/MealCard'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { fetchChefs, fetchMeals } from '../services/catalogService'
 import { useAuthStore } from '../store/authStore'
 import { pickOnePerChef } from '../utils/featured'
+import { DEFAULT_MAX_DISTANCE, searchPlaceParams, type SearchPlace } from '../utils/location'
+import { withUpdatedParams } from '../utils/searchParams'
 import './HomePage.css'
 
 const FEATURED_COUNT = 4
@@ -26,6 +29,14 @@ export default function HomePage() {
 
   const searchMeals = (value: string) => {
     navigate(value ? `/meals?${new URLSearchParams({ search: value })}` : '/meals')
+  }
+
+  const findChefsNear = (place: SearchPlace) => {
+    const params = withUpdatedParams(new URLSearchParams(), {
+      ...searchPlaceParams(place),
+      maxDistance: String(DEFAULT_MAX_DISTANCE),
+    })
+    navigate(`/chefs?${params}`)
   }
 
   return (
@@ -47,6 +58,7 @@ export default function HomePage() {
             placeholder="What are you craving? Try tacos, pho or vegan"
             onSearch={searchMeals}
           />
+          <NearMeForm variant="hero" onChoose={findChefsNear} />
           <div className="hero-buttons">
             <Link to="/chefs" className="btn btn-large btn-light">Browse Chefs</Link>
             <Link to={becomeChefLink} className="btn btn-large btn-outline-light">Become a Chef</Link>

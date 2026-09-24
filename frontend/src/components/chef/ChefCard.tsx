@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { ChefCardData } from '../../types/catalog.types'
 import { kitchenTitle } from '../../utils/format'
+import { formatDistance } from '../../utils/location'
 import Avatar from '../common/Avatar'
 import Rating from '../common/Rating'
 import MealImage from '../meal/MealImage'
@@ -23,6 +24,9 @@ export default function ChefCard({ chef }: { chef: ChefCardData }) {
         <p className="chef-card-by">
           by {chef.chefName} &middot; {chef.city}, {chef.state}
         </p>
+        {typeof chef.distanceMiles === 'number' && (
+          <p className="chef-card-distance">{formatDistance(chef.distanceMiles)}</p>
+        )}
         {chef.specialties.length > 0 && (
           <div className="chip-row">
             {chef.specialties.slice(0, 3).map((specialty) => (
