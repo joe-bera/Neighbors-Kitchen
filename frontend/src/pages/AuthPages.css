@@ -1,0 +1,101 @@
+.auth-page {
+  display: flex;
+  justify-content: center;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-card--wide {
+  max-width: 560px;
+}
+
+.auth-card h1 {
+  font-size: 1.9rem;
+}
+
+.auth-subtitle {
+  color: var(--color-text-muted);
+  margin-top: -0.75rem;
+}
+
+.auth-switch {
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* Customer / chef choice on the sign-up form */
+.role-picker {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.role-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.role-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.role-option:hover {
+  border-color: var(--color-brand);
+}
+
+.role-option:has(input:checked) {
+  border-color: var(--color-brand-strong);
+  background: var(--color-brand-soft);
+}
+
+.role-option:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.role-title {
+  font-weight: 700;
+}
+
+.role-description {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+/* Development-only helper for signing in with seeded accounts */
+.demo-accounts {
+  padding: 1rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.demo-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .role-options {
+    grid-template-columns: 1fr;
+  }
+}

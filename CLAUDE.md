@@ -1,7 +1,22 @@
 # CLAUDE.md - AI Assistant Guide for Neighbors-Kitchen
 
-> **Last Updated:** 2025-11-17
-> **Repository Status:** Initial development phase
+> **Last Updated:** 2026-09-23
+> **Repository Status:** Phase 1 of 8 complete (see "Build Plan" below)
+
+## Build Plan
+
+The app is built in eight phases, each tested and runnable before the next starts. The status table lives in README.md ("Project Status"); keep it current.
+
+1. Foundation: database, sample chefs and meals, sign-up and login (done)
+2. Customers: browse and search chefs and meals, chef and meal pages, working landing page buttons
+3. Chefs: become a chef, chef dashboard, add/edit meals with photos, availability
+4. Ordering: cart, pre-orders with pickup or delivery times, order tracking
+5. Payments: Stripe test mode, platform fee, chef payouts
+6. Reviews, ratings and dish suggestions
+7. Map of nearby chefs, email notifications
+8. Put it live on the internet
+
+After each phase: run the full test suites, run the app and click through the new flows, update README, commit and push. Ask the project owner before signing up for, or paying for, any outside service, and say exactly which account or key is needed.
 
 ## Project Overview
 
@@ -27,13 +42,26 @@
 ## Codebase Structure
 
 ### Current State
-The repository is in its initial state with minimal files:
 ```
 Neighbors-Kitchen/
-├── .git/
-├── README.md
-└── CLAUDE.md (this file)
+├── package.json        # root scripts: setup, dev, test, build, db:start/stop/seed
+├── frontend/           # React 19 + Vite, port 3000 (proxies /api to 4000)
+│   └── src/            # components/{layout,auth,common}, pages/, services/, store/, hooks/, types/, utils/
+├── backend/            # Express 5 + Prisma, port 4000
+│   ├── src/            # app.ts, index.ts, config/, controllers/, routes/, services/, middleware/, validators/, lib/, utils/, types/
+│   ├── prisma/         # schema.prisma, migrations/ (committed), seed.ts
+│   ├── scripts/        # db.mjs (local Postgres), ensure-env.mjs
+│   └── tests/          # Vitest + Supertest API tests
+└── .claude/launch.json # preview config: `npm run dev` on port 3000
 ```
+
+Key conventions already in place:
+- Backend is ESM with `module: NodeNext`: relative imports must end in `.js` (e.g. `import { prisma } from '../lib/prisma.js'`).
+- Environment is validated once in `backend/src/config/env.ts`; read settings from `env`, not `process.env`.
+- Throw `AppError(status, code, message, details?)` from `backend/src/utils/errors.ts`; the error handler formats it.
+- Validate request bodies with `validateBody(zodSchema)`; protect routes with `requireAuth` / `requireRole(...)`.
+- Auth: 15-minute JWT access token (in memory on the client) + 7-day refresh token in an httpOnly cookie (`nk_refresh`, path `/api/v1/auth`), stored hashed in `refresh_tokens`.
+- Frontend calls the API through `frontend/src/services/api.ts`, which attaches the token and refreshes it once on `TOKEN_EXPIRED`.
 
 ### Recommended Structure
 For a full-stack marketplace application, we recommend this structure:
@@ -354,108 +382,30 @@ git pull --rebase origin <branch-name>
 ## Environment Setup
 
 ### Prerequisites
-- Node.js 18+ LTS
-- PostgreSQL 14+
-- npm or pnpm
+- Node.js 20+ and npm
 - Git
-- (Optional) Docker Desktop for containerized development
+
+PostgreSQL is not installed separately: `backend/scripts/db.mjs` runs a private server from the `embedded-postgres` npm package on port 5433, with data in `~/.neighbors-kitchen/pgdata` (kept out of the repo so iCloud-style folder sync never touches live database files; override with `LOCAL_PG_DATA_DIR`). It hosts two databases: `neighbors_kitchen` (dev) and `neighbors_kitchen_test` (tests).
 
 ### Installation Steps
 ```bash
-# Clone the repository
 git clone https://github.com/joe-bera/Neighbors-Kitchen.git
 cd Neighbors-Kitchen
-
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
-
-# Set up environment variables (copy from .env.example)
-cp .env.example .env
-
-# Set up database
-npm run db:migrate
-npm run db:seed  # Optional: seed with test data
-
-# Run development servers
-# Terminal 1 - Backend
-cd backend && npm run dev
-
-# Terminal 2 - Frontend
-cd frontend && npm run dev
+npm run setup   # installs, creates backend/.env, starts Postgres, migrates, seeds
+npm run dev     # Postgres + API (4000) + website (3000); open http://localhost:3000
 ```
+
+npm 11 blocks dependency install scripts unless they are listed in `allowScripts` in each package.json. Approve new ones with `npm install-scripts approve <pkg> --no-allow-scripts-pin` after checking what they do.
 
 ### Environment Variables
 
 #### Backend (.env)
-```bash
-# Server Configuration
-NODE_ENV=development
-PORT=5000
-API_URL=http://localhost:5000
-FRONTEND_URL=http://localhost:3000
-
-# Database
-DATABASE_URL=postgresql://username:password@localhost:5432/neighbors_kitchen
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=neighbors_kitchen
-DB_USER=your_username
-DB_PASSWORD=your_password
-
-# Authentication
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
-JWT_REFRESH_SECRET=your-refresh-secret-key
-JWT_EXPIRE=15m
-JWT_REFRESH_EXPIRE=7d
-
-# Stripe Payment
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_CONNECT_CLIENT_ID=ca_...
-PLATFORM_FEE_PERCENTAGE=10
-
-# Email Service (SendGrid example)
-EMAIL_SERVICE=sendgrid
-SENDGRID_API_KEY=SG...
-EMAIL_FROM=noreply@neighbors-kitchen.com
-EMAIL_FROM_NAME=Neighbors Kitchen
-
-# File Upload (AWS S3 example)
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=us-east-1
-AWS_S3_BUCKET=neighbors-kitchen-images
-
-# Or Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
-# Google Maps API
-GOOGLE_MAPS_API_KEY=AIza...
-
-# Session (if using Redis)
-REDIS_URL=redis://localhost:6379
-SESSION_SECRET=your-session-secret
-
-# Monitoring & Error Tracking
-SENTRY_DSN=https://...@sentry.io/...
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-```
+See `backend/.env.example` (the source of truth). Currently used: `NODE_ENV`, `PORT` (4000), `FRONTEND_URL`, `DATABASE_URL`, `JWT_SECRET` (32+ chars), `JWT_EXPIRE`, `REFRESH_TOKEN_TTL_DAYS`, `BCRYPT_ROUNDS`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`. Later phases add Stripe, email, maps and image-storage keys; add each new one to `.env.example` and to the schema in `src/config/env.ts`.
 
 #### Frontend (.env)
 ```bash
-# API Configuration
-VITE_API_URL=http://localhost:5000
+# API Configuration (leave empty in development: Vite proxies /api to port 4000)
+VITE_API_URL=
 VITE_API_TIMEOUT=10000
 
 # Stripe (Public Key)
@@ -485,12 +435,15 @@ VITE_GA_TRACKING_ID=UA-...
 ## Testing Strategy
 
 ### Test Organization
-*To be established*
+- **Backend:** Vitest + Supertest in `backend/tests/*.test.ts`. Tests call `createApp()` and hit the real `neighbors_kitchen_test` database; every table is truncated before each test (`tests/setup.ts`), and migrations are applied once per run (`tests/globalSetup.ts`). Test settings live in `tests/testEnv.ts`.
+- **Frontend:** Vitest in `frontend/src/**/*.test.ts`, with MSW mocking the HTTP API for the `services/` layer.
+- Write the failing test first, then the code.
 
 ### Running Tests
 ```bash
-# Add commands when test suite is set up
-# Example: npm test, pytest, etc.
+npm test                  # everything, from the project root
+cd backend && npm test    # API tests only
+cd frontend && npm test   # frontend tests only
 ```
 
 ### Testing Guidelines
@@ -1100,7 +1053,10 @@ const handleError = (error: ApiError) => {
 - **Detached HEAD:** `git checkout <branch-name>` to reattach
 
 ### Development Issues
-*To be added as they arise*
+- **Port 5000 is taken on macOS** by AirPlay Receiver; the API uses 4000. The root `dev` script pins `PORT=4000` because some launchers export `PORT` for the website.
+- **Unexpected dev-server restarts or page reloads:** iCloud Drive syncing `~/Documents` can fire file-change events without changing files. Harmless; it stops once sync catches up.
+- **`ERR_MODULE_NOT_FOUND` when running `dist/`:** a backend relative import is missing its `.js` extension.
+- **Prisma client out of date after a schema change:** run `npm run db:migrate` (or `npm run db:generate`) in `backend/`.
 
 ## Resources and References
 
@@ -1276,5 +1232,5 @@ Track these key metrics:
 
 **Note:** This is a living document. As Neighbors-Kitchen develops, this guide should be updated to reflect the actual codebase, conventions, and workflows established by the team.
 
-**Last Updated:** 2025-11-17
-**Contributors:** AI Assistant (Initial comprehensive guide for chef marketplace platform)
+**Last Updated:** 2026-09-23
+**Contributors:** AI Assistant (Initial comprehensive guide for chef marketplace platform; Phase 1 foundation)

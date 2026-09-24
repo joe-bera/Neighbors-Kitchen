@@ -4,22 +4,18 @@ A community marketplace platform connecting local chefs with neighbors who want 
 
 ## Project Status
 
-**Current Phase:** Initial Development Setup ✅
+The app is being built in eight phases. Each phase is tested and runnable before the next one starts.
 
-### Completed
-- ✅ Project directory structure
-- ✅ Backend API setup (Node.js + Express + TypeScript)
-- ✅ Frontend setup (React + TypeScript + Vite)
-- ✅ Database schema design (Prisma + PostgreSQL)
-- ✅ Environment configuration
-- ✅ Git repository initialized
-
-### Next Steps
-- ⏳ Database setup and migrations
-- ⏳ Authentication system (JWT)
-- ⏳ Core API endpoints
-- ⏳ Frontend components and routing
-- ⏳ Stripe payment integration
+| Phase | What it adds | Status |
+|-------|--------------|--------|
+| 1. Foundation | Database connected, sample chefs and meals, sign-up and login for customers and chefs | ✅ Done |
+| 2. Customers | Browse and search chefs and meals, chef profile pages, meal pages, working landing page buttons | ⏳ Next |
+| 3. Chefs | Become a chef, chef dashboard, add and edit meals with photos, set availability | ⏳ |
+| 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ⏳ |
+| 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏳ |
+| 6. Trust | Reviews, ratings and dish suggestions | ⏳ |
+| 7. Local | Find chefs near you on a map, email notifications | ⏳ |
+| 8. Launch | Put it live on the internet | ⏳ |
 
 ## Features
 
@@ -36,151 +32,124 @@ A community marketplace platform connecting local chefs with neighbors who want 
 ## Tech Stack
 
 ### Frontend
-- **Framework:** React 18+ with TypeScript
+- **Framework:** React 19 with TypeScript
 - **Build Tool:** Vite
-- **Routing:** React Router v6
+- **Routing:** React Router
 - **State Management:** Zustand
 - **Forms:** React Hook Form with Zod validation
 - **API Client:** Axios
+- **Tests:** Vitest + MSW
 
 ### Backend
-- **Runtime:** Node.js 18+
-- **Framework:** Express.js with TypeScript
-- **Database:** PostgreSQL 14+ with Prisma ORM
-- **Authentication:** JWT (JSON Web Tokens)
-- **Security:** Helmet, CORS, Rate Limiting
+- **Runtime:** Node.js 20+
+- **Framework:** Express 5 with TypeScript
+- **Database:** PostgreSQL with Prisma ORM (a private local server runs from npm for development)
+- **Authentication:** JWT access tokens + httpOnly refresh-token cookie, bcrypt password hashing, account lockout
+- **Security:** Helmet, CORS, rate limiting, Zod input validation
+- **Tests:** Vitest + Supertest against a real test database
 
 ### Future Integrations
-- Stripe (Payment processing)
-- AWS S3 or Cloudinary (Image storage)
-- SendGrid or AWS SES (Email service)
-- Google Maps API (Location features)
+- Stripe (payment processing)
+- Cloudinary or similar (image storage in production)
+- Email service (notifications)
+- Maps (location features)
 
 ## Project Structure
 
 ```
 Neighbors-Kitchen/
-├── frontend/           # React frontend application
-│   ├── src/
-│   │   ├── components/ # React components
-│   │   ├── pages/      # Page components
-│   │   ├── hooks/      # Custom hooks
-│   │   ├── services/   # API services
-│   │   └── store/      # State management
-│   └── package.json
+├── package.json          # One-command scripts: npm run setup, npm run dev, npm test
+├── frontend/             # React app (http://localhost:3000)
+│   └── src/
+│       ├── components/   # layout/, auth/, common/
+│       ├── pages/        # HomePage, LoginPage, SignupPage, AccountPage, ...
+│       ├── services/     # API client (api.ts) and authService
+│       ├── store/        # Zustand stores (authStore)
+│       ├── hooks/, types/, utils/
 │
-├── backend/            # Express backend API
+├── backend/              # Express API (http://localhost:4000/api/v1)
 │   ├── src/
-│   │   ├── controllers/# Request handlers
-│   │   ├── models/     # Prisma client
-│   │   ├── routes/     # API routes
-│   │   ├── middleware/ # Express middleware
-│   │   └── services/   # Business logic
-│   ├── prisma/         # Database schema
-│   └── package.json
+│   │   ├── app.ts        # Express app (used by the server and the tests)
+│   │   ├── index.ts      # Starts the server
+│   │   ├── config/       # Validated environment settings
+│   │   ├── controllers/, routes/, services/, middleware/, validators/
+│   ├── prisma/           # schema.prisma, migrations/, seed.ts (sample data)
+│   ├── scripts/          # db.mjs (local Postgres), ensure-env.mjs
+│   └── tests/            # API tests
 │
-├── shared/             # Shared TypeScript types
-├── docs/               # Documentation
-└── CLAUDE.md          # AI assistant guide
+└── CLAUDE.md             # AI assistant guide
 ```
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ LTS
-- PostgreSQL 14+
-- npm or pnpm
+- Node.js 20+ and npm
 - Git
 
-### Installation
+That's it. PostgreSQL does not need to be installed: the project runs its own private copy from npm.
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/joe-bera/Neighbors-Kitchen.git
-   cd Neighbors-Kitchen
-   ```
+### First-time setup
 
-2. **Install backend dependencies**
-   ```bash
-   cd backend
-   npm install
-   ```
+```bash
+git clone https://github.com/joe-bera/Neighbors-Kitchen.git
+cd Neighbors-Kitchen
+npm run setup
+```
 
-3. **Install frontend dependencies**
-   ```bash
-   cd ../frontend
-   npm install
-   ```
+`npm run setup` installs everything, creates `backend/.env`, starts the local database, creates the tables and loads the sample data.
 
-4. **Set up environment variables**
-   ```bash
-   # Backend
-   cd backend
-   cp .env.example .env
-   # Edit .env with your database credentials and other settings
+### Run the app
 
-   # Frontend
-   cd ../frontend
-   cp .env.example .env
-   # Edit .env with your API URL and other settings
-   ```
+```bash
+npm run dev
+```
 
-5. **Set up the database**
-   ```bash
-   cd backend
+Then open **http://localhost:3000**. This starts the database (if needed), the API on port 4000 and the website on port 3000. Press `Ctrl+C` to stop the website and API. The database keeps running in the background; stop it with `npm run db:stop`.
 
-   # Generate Prisma client
-   npm run db:generate
+### Demo accounts
 
-   # Run database migrations
-   npm run db:migrate
+The sample data includes 8 chefs across the Inland Empire and Coachella Valley, 35 meals, and one customer. Every demo account uses the password `Password123`.
 
-   # (Optional) Seed database with test data
-   npm run db:seed
-   ```
+| Account | Email |
+|---------|-------|
+| Customer | `customer@neighborskitchen.test` |
+| Chefs | `maria@`, `kenji@`, `aisha@`, `tony@`, `grace@`, `priya@`, `linh@`, `sofia@neighborskitchen.test` |
 
-6. **Run the development servers**
+In development, the login page has "Customer demo" and "Chef demo" buttons that fill these in.
 
-   In separate terminal windows:
+### Where the database lives
 
-   ```bash
-   # Terminal 1 - Backend (http://localhost:5000)
-   cd backend
-   npm run dev
-   ```
-
-   ```bash
-   # Terminal 2 - Frontend (http://localhost:3000)
-   cd frontend
-   npm run dev
-   ```
-
-7. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000/api/v1
-   - API Health Check: http://localhost:5000/health
+The local database is stored in `~/.neighbors-kitchen/pgdata` (outside the project folder) and listens on port 5433. It is kept out of the project on purpose, so folder-sync tools like iCloud Drive never touch a running database. Set `LOCAL_PG_DATA_DIR` to use a different folder.
 
 ## Available Scripts
 
-### Backend
+### From the project root
 ```bash
-npm run dev          # Start development server with hot reload
-npm run build        # Build for production
-npm run start        # Start production server
-npm run test         # Run tests
-npm run lint         # Run ESLint
-npm run format       # Format code with Prettier
-npm run db:generate  # Generate Prisma client
-npm run db:migrate   # Run database migrations
-npm run db:studio    # Open Prisma Studio (database GUI)
+npm run setup     # First-time install, database and sample data
+npm run dev       # Run database + API + website together
+npm test          # Run backend and frontend tests
+npm run build     # Production builds of backend and frontend
+npm run db:start  # Start the local database
+npm run db:stop   # Stop the local database
+npm run db:seed   # Reload the sample data (safe to repeat)
 ```
 
-### Frontend
+### Backend (`cd backend`)
 ```bash
-npm run dev     # Start development server
-npm run build   # Build for production
-npm run preview # Preview production build
-npm run lint    # Run ESLint
+npm run dev          # API with hot reload
+npm test             # API tests (uses a separate test database)
+npm run build        # Compile to dist/
+npm run db:migrate   # Create and apply a new migration after changing schema.prisma
+npm run db:reset     # Wipe the database, re-apply migrations and reload sample data
+npm run db:studio    # Browse the data in Prisma Studio
+```
+
+### Frontend (`cd frontend`)
+```bash
+npm run dev      # Website with hot reload
+npm test         # Frontend tests
+npm run build    # Production build
+npm run lint     # ESLint
 ```
 
 ## Database Schema
@@ -188,7 +157,8 @@ npm run lint    # Run ESLint
 The application uses PostgreSQL with Prisma ORM. Key models include:
 
 - **Users** - Customer and chef accounts with role-based access
-- **ChefProfiles** - Chef-specific information including location and ratings
+- **RefreshTokens** - Login sessions (only hashed tokens are stored)
+- **ChefProfiles** - Chef-specific information including kitchen name, location and ratings
 - **Menus** - Chef menu collections
 - **Meals** - Individual dishes with pricing and dietary tags
 - **Orders** - Order management with status tracking
@@ -200,45 +170,48 @@ See `backend/prisma/schema.prisma` for complete schema details.
 
 ## API Documentation
 
-The API follows RESTful conventions and is versioned at `/api/v1/`.
+The API follows RESTful conventions and is versioned at `/api/v1/`. Responses look like `{ "success": true, "data": ... }` or `{ "success": false, "error": { "code", "message", "details" } }`.
 
-### Core Endpoints (Planned)
-- Authentication: `/api/v1/auth/*`
-- Users: `/api/v1/users/*`
-- Chefs: `/api/v1/chefs/*`
-- Meals: `/api/v1/meals/*`
-- Orders: `/api/v1/orders/*`
-- Reviews: `/api/v1/reviews/*`
-- Payments: `/api/v1/payments/*`
+### Available now
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/register` | Create a customer or chef account |
+| POST | `/api/v1/auth/login` | Log in (locks for 15 minutes after 5 wrong passwords) |
+| POST | `/api/v1/auth/refresh-token` | Get a new access token using the refresh cookie |
+| POST | `/api/v1/auth/logout` | Log out and revoke the refresh token |
+| GET | `/api/v1/users/me` | The signed-in user, with a kitchen summary for chefs |
+| GET | `/health` | Health check |
 
-Full API documentation will be available once endpoints are implemented.
+### Coming in later phases
+Chefs, meals, orders, reviews, suggestions and payments endpoints (see CLAUDE.md for the planned design).
 
 ## Environment Variables
 
-### Backend (.env)
-Key environment variables (see `.env.example` for full list):
-- `DATABASE_URL` - PostgreSQL connection string
-- `JWT_SECRET` - Secret key for JWT tokens
-- `PORT` - API server port (default: 5000)
-- `FRONTEND_URL` - Frontend URL for CORS
+### Backend (`backend/.env`)
+Created automatically by `npm run setup` from `.env.example`. Key settings:
+- `DATABASE_URL` - PostgreSQL connection string (local default: port 5433)
+- `JWT_SECRET` - Secret for signing access tokens (a random one is generated for you)
+- `PORT` - API port (default 4000)
+- `FRONTEND_URL` - Website URL allowed by CORS
 
-### Frontend (.env)
-- `VITE_API_URL` - Backend API URL
-- `VITE_ENV` - Environment (development/production)
+### Frontend (`frontend/.env`, optional)
+- `VITE_API_URL` - Leave empty in development; Vite forwards `/api` to the backend
 
 ## Security
 
-- Passwords hashed with bcrypt
-- JWT authentication with refresh tokens
-- Rate limiting on API endpoints
-- CORS configured for specific origins
-- Helmet.js for security headers
-- Input validation and sanitization
+- Passwords hashed with bcrypt (12 rounds)
+- Short-lived JWT access tokens kept in memory; refresh tokens in httpOnly cookies, stored hashed
+- Account lockout after repeated failed logins
+- Rate limiting on the API and on login/sign-up
+- CORS limited to the website's origin
+- Helmet security headers
+- Input validation with Zod
 - Prepared statements via Prisma (SQL injection prevention)
 
-## Contributing
+## Troubleshooting
 
-This project is in initial development. For contribution guidelines, please see CLAUDE.md.
+- **Port 5000 on macOS** is used by AirPlay Receiver, which is why the API uses port 4000.
+- **Dev server reloads on its own:** if the project sits in an iCloud-synced folder (like Documents), iCloud can trigger file-change events while it syncs. It settles down once syncing finishes.
 
 ## License
 
@@ -247,11 +220,7 @@ ISC
 ## Documentation
 
 - `CLAUDE.md` - Comprehensive guide for AI assistants and developers
-- `docs/` - Additional documentation (to be created)
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
+- `DEPLOYMENT.md` - Deployment notes (updated in Phase 8)
 
 ---
 
