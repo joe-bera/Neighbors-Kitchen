@@ -127,10 +127,12 @@ function chefView(order: OrderRow) {
 
 /**
  * Miles from the chef's public area to a delivery address, or null when either cannot be placed on
- * the map (the order then goes ahead, and the chef can decline it). Refuses addresses farther than
- * the chef delivers.
+ * the map precisely (the order then goes ahead, and the chef can decline it). Refuses addresses
+ * farther than the chef delivers.
  */
 async function deliveryDistance(chef: ChefProfile, address: string): Promise<number | null> {
+  // A kitchen placed only by its ZIP code could really be miles from that spot, so it is not measured.
+  if (chef.locationPrecision !== 'ADDRESS') return null;
   const kitchenArea = areaCenter(chef);
   if (!kitchenArea) return null;
   const destination = await geocodeAddress(address);

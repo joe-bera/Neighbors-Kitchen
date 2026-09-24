@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { AvailabilityInput, KitchenProfileInput, KitchenUpdateInput } from '../validators/kitchenSchemas.js';
-import { locateKitchen, toArea } from './locationService.js';
+import { locateKitchen, relocateKitchen, toArea } from './locationService.js';
 
 // A chef's own view of their kitchen, including private details such as the street address.
 
@@ -34,6 +34,8 @@ function toOwnKitchen(chef: OwnKitchenRow) {
     zipCode: chef.zipCode,
     // Where neighbors see the kitchen: an approximate area, never the street address.
     area: toArea(chef),
+    // ADDRESS, ZIP_CODE (only the middle of the ZIP code was found) or null (not on the map)
+    locationPrecision: chef.locationPrecision,
     serviceRadiusMiles: chef.serviceRadiusMiles.toNumber(),
     isAcceptingOrders: chef.isAcceptingOrders,
     orderLeadTimeHours: chef.orderLeadTimeHours,
@@ -99,8 +101,11 @@ export async function updateOwnKitchen(userId: string, input: KitchenUpdateInput
     state: input.state ?? current.state,
     zipCode: input.zipCode ?? current.zipCode,
   };
-  const moved = ADDRESS_FIELDS.some((field) => address[field] !== current[field]);
-  const location = moved ? await locateKitchen(address) : {};
+  // A kitchen not yet found from its street address is looked up again on every save, so fixing a typo and
+  // saving (or simply saving again after an outage) can place it properly.
+  const moved =
+    current.locationPrecision !== 'ADDRESS' || ADDRESS_FIELDS.some((field) => address[field] !== current[field]);
+  const location = moved ? await relocateKitchen(current, address) : {};
   const chef = await prisma.chefProfile.update({
     where: { id: current.id },
     data: { ...input, ...location },

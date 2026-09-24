@@ -44,6 +44,12 @@ enum MealCategory {
   SNACK
 }
 
+// How a kitchen was placed on the map.
+enum LocationPrecision {
+  ADDRESS  // its street address was found
+  ZIP_CODE // only the middle of its ZIP code
+}
+
 enum SuggestionStatus {
   PENDING
   CONSIDERING
@@ -123,6 +129,8 @@ model ChefProfile {
   // Public area center: the location moved 0.1-0.3 miles in a random direction (services/geo.ts)
   approxLatitude          Decimal? @map("approx_latitude") @db.Decimal(9, 6)
   approxLongitude         Decimal? @map("approx_longitude") @db.Decimal(9, 6)
+  // How the kitchen was placed; null when it is not on the map
+  locationPrecision       LocationPrecision? @map("location_precision")
   serviceRadiusMiles      Decimal  @default(5.0) @map("service_radius_miles") @db.Decimal(5, 2)
   averageRating           Decimal? @map("average_rating") @db.Decimal(3, 2)
   totalReviews            Int      @default(0) @map("total_reviews")

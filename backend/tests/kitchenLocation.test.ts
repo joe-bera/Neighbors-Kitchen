@@ -42,17 +42,33 @@ describe('Placing a kitchen on the map', () => {
     expect(offset).toBeGreaterThanOrEqual(0.099);
     expect(offset).toBeLessThanOrEqual(0.301);
     expect(res.body.data.chefProfile.area).toEqual({ ...area, radiusMiles: 0.5 });
+    expect(res.body.data.chefProfile.locationPrecision).toBe('ADDRESS');
     expect(res.body.data.chefProfile).not.toHaveProperty('latitude');
     expect(res.body.data.chefProfile).not.toHaveProperty('longitude');
     expect(res.body.data.chefProfile).not.toHaveProperty('approxLatitude');
   });
 
-  it('uses the middle of the ZIP code when the street address is not found', async () => {
+  it('uses the middle of the ZIP code when the street address is not found, and says so', async () => {
     const customer = await signUp(app);
 
-    await request(app).post(`${API}/chefs`).set(bearer(customer.accessToken)).send(kitchenInput);
+    const res = await request(app).post(`${API}/chefs`).set(bearer(customer.accessToken)).send(kitchenInput);
 
     expect((await storedLocation(customer.userId)).exact).toEqual(zipCentroid('92373'));
+    expect(res.body.data.chefProfile.locationPrecision).toBe('ZIP_CODE');
+  });
+
+  it('tries the street address again on the next save when only the ZIP code was found', async () => {
+    const chef = await signUpChefWithKitchen(app);
+    geocode.mockResolvedValue(CITY_HALL);
+
+    const res = await request(app)
+      .put(`${API}/chefs/me`)
+      .set(bearer(chef.accessToken))
+      .send({ bio: 'Now cooking Oaxacan moles every weekend for the neighborhood.' });
+
+    expect(geocode).toHaveBeenLastCalledWith('742 Evergreen Terrace, Redlands, CA 92373');
+    expect((await storedLocation(chef.userId)).exact).toEqual(CITY_HALL);
+    expect(res.body.data.chefProfile.locationPrecision).toBe('ADDRESS');
   });
 
   it('leaves a kitchen off the map when neither the address nor the ZIP code can be found', async () => {
@@ -65,6 +81,7 @@ describe('Placing a kitchen on the map', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.data.chefProfile.area).toBeNull();
+    expect(res.body.data.chefProfile.locationPrecision).toBeNull();
     expect(await storedLocation(customer.userId)).toEqual({ exact: null, area: null });
   });
 
@@ -87,6 +104,7 @@ describe('Placing a kitchen on the map', () => {
   });
 
   it('keeps the same area when the apartment line or other details change, or the same address is saved again', async () => {
+    geocode.mockResolvedValue(CITY_HALL);
     const chef = await signUpChefWithKitchen(app);
     const before = await storedLocation(chef.userId);
     geocode.mockClear();
@@ -103,5 +121,22 @@ describe('Placing a kitchen on the map', () => {
 
     expect(geocode).not.toHaveBeenCalled();
     expect(await storedLocation(chef.userId)).toEqual(before);
+  });
+
+  it('keeps the public circle when a differently written address is found at the same spot', async () => {
+    geocode.mockResolvedValue(CITY_HALL);
+    const chef = await signUpChefWithKitchen(app);
+    const before = await storedLocation(chef.userId);
+    // The same house written another way can come back a few yards off.
+    geocode.mockResolvedValue({ latitude: CITY_HALL.latitude + 0.0003, longitude: CITY_HALL.longitude });
+
+    const res = await request(app)
+      .put(`${API}/chefs/me`)
+      .set(bearer(chef.accessToken))
+      .send({ addressLine1: '742 Evergreen Ter', city: 'redlands' });
+
+    expect(geocode).toHaveBeenCalledTimes(2);
+    expect(await storedLocation(chef.userId)).toEqual(before);
+    expect(res.body.data.chefProfile.area).toEqual({ ...before.area, radiusMiles: 0.5 });
   });
 });

@@ -1,6 +1,6 @@
-import { Prisma } from '@prisma/client';
+import { LocationPrecision, Prisma } from '@prisma/client';
 import { AppError } from '../utils/errors.js';
-import { AREA_RADIUS_MILES, approximateLocation, LatLng } from './geo.js';
+import { AREA_RADIUS_MILES, approximateLocation, distanceMiles, LatLng } from './geo.js';
 import { geocodeAddress } from './geocoding.js';
 import { zipCentroid } from './zipCodes.js';
 
@@ -25,17 +25,46 @@ interface AreaColumns {
  * out of the lookup on purpose: it does not move the kitchen and can confuse the geocoder.
  */
 export async function locateKitchen(address: KitchenAddress) {
-  const exact =
-    (await geocodeAddress(`${address.addressLine1}, ${address.city}, ${address.state} ${address.zipCode}`)) ??
-    zipCentroid(address.zipCode);
-  if (!exact) return { latitude: null, longitude: null, approxLatitude: null, approxLongitude: null };
+  const street = await geocodeAddress(`${address.addressLine1}, ${address.city}, ${address.state} ${address.zipCode}`);
+  const exact = street ?? zipCentroid(address.zipCode);
+  if (!exact) {
+    return { latitude: null, longitude: null, approxLatitude: null, approxLongitude: null, locationPrecision: null };
+  }
   const area = approximateLocation(exact);
   return {
     latitude: exact.latitude,
     longitude: exact.longitude,
     approxLatitude: area.latitude,
     approxLongitude: area.longitude,
+    locationPrecision: street ? LocationPrecision.ADDRESS : LocationPrecision.ZIP_CODE,
   };
+}
+
+// A kitchen found within this distance of where it already was has not moved.
+const SAME_SPOT_MILES = 0.05;
+
+interface StoredLocation extends AreaColumns {
+  latitude: Prisma.Decimal | null;
+  longitude: Prisma.Decimal | null;
+}
+
+/**
+ * Looks a kitchen up again after an address edit. A kitchen found at (nearly) the same spot keeps its
+ * public circle: a new random circle around the same home, compared with the old one, would narrow down
+ * where the home is. Only how it was found (street address or ZIP code) may change.
+ */
+export async function relocateKitchen(current: StoredLocation, address: KitchenAddress) {
+  const next = await locateKitchen(address);
+  const before =
+    current.latitude && current.longitude
+      ? { latitude: current.latitude.toNumber(), longitude: current.longitude.toNumber() }
+      : null;
+  const after =
+    next.latitude !== null && next.longitude !== null ? { latitude: next.latitude, longitude: next.longitude } : null;
+  if (before && after && areaCenter(current) && distanceMiles(before, after) <= SAME_SPOT_MILES) {
+    return { locationPrecision: next.locationPrecision };
+  }
+  return next;
 }
 
 /** The public area center, used for every distance the app shows or compares. */

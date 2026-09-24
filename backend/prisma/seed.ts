@@ -762,6 +762,7 @@ async function seedChef(chef: SeedChef, passwordHash: string) {
     ...handover,
     approxLatitude: area.latitude,
     approxLongitude: area.longitude,
+    locationPrecision: 'ADDRESS' as const,
     offersPickup: true,
     isAcceptingOrders: true,
   };
@@ -930,15 +931,21 @@ async function fillMissingAreas() {
   });
   let placed = 0;
   for (const chef of chefs) {
-    const exact =
-      chef.latitude && chef.longitude
-        ? { latitude: chef.latitude.toNumber(), longitude: chef.longitude.toNumber() }
-        : zipCentroid(chef.zipCode);
+    const hadSpot = chef.latitude !== null && chef.longitude !== null;
+    const exact = hadSpot
+      ? { latitude: chef.latitude!.toNumber(), longitude: chef.longitude!.toNumber() }
+      : zipCentroid(chef.zipCode);
     if (!exact) continue;
     const area = approximateLocation(exact, seededRandom(chef.id));
     await prisma.chefProfile.update({
       where: { id: chef.id },
-      data: { ...exact, approxLatitude: area.latitude, approxLongitude: area.longitude },
+      data: {
+        ...exact,
+        approxLatitude: area.latitude,
+        approxLongitude: area.longitude,
+        // Only the ZIP code is known for kitchens without a stored spot; the chef is asked to save their address again.
+        locationPrecision: hadSpot ? 'ADDRESS' : 'ZIP_CODE',
+      },
     });
     placed += 1;
   }

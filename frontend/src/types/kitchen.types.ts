@@ -7,6 +7,9 @@ export interface AvailabilityWindow {
   endTime: string
 }
 
+/** How a kitchen was placed on the map: from its street address, or only from its ZIP code. */
+export type LocationPrecision = 'ADDRESS' | 'ZIP_CODE'
+
 /** A chef's own view of their kitchen, including private details. */
 export interface OwnKitchen {
   id: string
@@ -22,6 +25,8 @@ export interface OwnKitchen {
   zipCode: string
   /** The approximate area neighbors see, or null if the address could not be placed on the map. */
   area: ChefArea | null
+  /** Null for kitchens not on the map, or placed before this was recorded. */
+  locationPrecision: LocationPrecision | null
   serviceRadiusMiles: number
   isAcceptingOrders: boolean
   orderLeadTimeHours: number

@@ -11,6 +11,8 @@ const geocode = vi.mocked(geocodeAddress);
 
 const app = createApp();
 const ADDRESS = '1 Orange St, Redlands, CA 92373';
+// Where the test kitchen's street address is found.
+const KITCHEN_SPOT = { latitude: 34.055217, longitude: -117.182488 };
 
 beforeEach(() => {
   geocode.mockReset();
@@ -26,6 +28,12 @@ async function northOfKitchen(kitchen: Kitchen, miles: number) {
   };
 }
 
+/** A delivering kitchen placed on the map from its street address. */
+async function locatedKitchen() {
+  geocode.mockResolvedValueOnce(KITCHEN_SPOT);
+  return openKitchen({ offersDelivery: true });
+}
+
 function deliveryOrder(kitchen: Kitchen) {
   return { ...pickupOrder(kitchen), pickupOrDelivery: 'DELIVERY', deliveryAddress: ADDRESS, contactPhone: '(909) 555-0142' };
 }
@@ -35,10 +43,10 @@ async function chefOrders(kitchen: Kitchen) {
   return res.body.data;
 }
 
-// Test kitchens deliver up to 10 miles (helpers.kitchenInput) and sit near the middle of ZIP 92373.
+// Test kitchens deliver up to 10 miles (helpers.kitchenInput).
 describe('Delivery distance', () => {
   it('refuses a delivery address beyond how far the chef delivers', async () => {
-    const kitchen = await openKitchen({ offersDelivery: true });
+    const kitchen = await locatedKitchen();
     const customer = await signUp(app);
     geocode.mockResolvedValueOnce(await northOfKitchen(kitchen, 12.4));
 
@@ -53,7 +61,7 @@ describe('Delivery distance', () => {
   });
 
   it('accepts an address right at the limit and tells only the chef how far it is', async () => {
-    const kitchen = await openKitchen({ offersDelivery: true });
+    const kitchen = await locatedKitchen();
     const customer = await signUp(app);
     geocode.mockResolvedValueOnce(await northOfKitchen(kitchen, 10));
 
@@ -65,7 +73,7 @@ describe('Delivery distance', () => {
   });
 
   it('refuses an address just past the limit', async () => {
-    const kitchen = await openKitchen({ offersDelivery: true });
+    const kitchen = await locatedKitchen();
     const customer = await signUp(app);
     geocode.mockResolvedValueOnce(await northOfKitchen(kitchen, 10.2));
 
@@ -76,7 +84,7 @@ describe('Delivery distance', () => {
   });
 
   it('lets the order through when the address cannot be found', async () => {
-    const kitchen = await openKitchen({ offersDelivery: true });
+    const kitchen = await locatedKitchen();
     const customer = await signUp(app);
 
     const res = await placeOrder(customer.accessToken, deliveryOrder(kitchen));
@@ -86,7 +94,7 @@ describe('Delivery distance', () => {
   });
 
   it('does not look up addresses for pickup orders', async () => {
-    const kitchen = await openKitchen({ offersDelivery: true });
+    const kitchen = await locatedKitchen();
     const customer = await signUp(app);
     geocode.mockClear();
 
@@ -98,7 +106,7 @@ describe('Delivery distance', () => {
   });
 
   it('skips the check for a kitchen that is not on the map', async () => {
-    const kitchen = await openKitchen({ offersDelivery: true });
+    const kitchen = await locatedKitchen();
     await prisma.chefProfile.update({ where: { id: kitchen.chefId }, data: { approxLatitude: null, approxLongitude: null } });
     const customer = await signUp(app);
     geocode.mockClear();
@@ -107,5 +115,18 @@ describe('Delivery distance', () => {
 
     expect(res.status).toBe(201);
     expect(geocode).not.toHaveBeenCalled();
+  });
+
+  it('skips the check for a kitchen placed only by its ZIP code, whose true spot could be miles away', async () => {
+    const kitchen = await openKitchen({ offersDelivery: true });
+    const customer = await signUp(app);
+    geocode.mockClear();
+    geocode.mockResolvedValue({ latitude: 33.7204, longitude: -116.372 });
+
+    const res = await placeOrder(customer.accessToken, deliveryOrder(kitchen));
+
+    expect(res.status).toBe(201);
+    expect(geocode).not.toHaveBeenCalled();
+    expect((await chefOrders(kitchen))[0].deliveryDistanceMiles).toBeNull();
   });
 });
