@@ -50,6 +50,27 @@ describe('geocodeAddress', () => {
     fetchMock.mockResolvedValue(censusAnswer([]));
 
     expect(await geocodeAddress(ADDRESS)).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('tries again without the dash in house numbers written like 73-510', async () => {
+    fetchMock
+      .mockResolvedValueOnce(censusAnswer([]))
+      .mockResolvedValueOnce(censusAnswer([{ coordinates: { x: -116.372, y: 33.7204 } }]));
+
+    const result = await geocodeAddress('73-510 Fred Waring Dr, Palm Desert, CA 92260');
+
+    expect(result).toEqual({ latitude: 33.7204, longitude: -116.372 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retried = new URL(String(fetchMock.mock.calls[1][0]));
+    expect(retried.searchParams.get('address')).toBe('73510 Fred Waring Dr, Palm Desert, CA 92260');
+  });
+
+  it('does not try again when the service itself failed', async () => {
+    fetchMock.mockRejectedValue(new DOMException('The operation was aborted due to timeout', 'TimeoutError'));
+
+    expect(await geocodeAddress('73-510 Fred Waring Dr, Palm Desert, CA 92260')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('returns null when the service answers with an error', async () => {
