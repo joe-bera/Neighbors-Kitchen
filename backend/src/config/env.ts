@@ -16,6 +16,8 @@ const envSchema = z.object({
   UPLOAD_DIR: z.string().min(1).default(path.resolve('uploads')),
   // Commission kept by Neighbors Kitchen, as a percent of each order's meal subtotal
   PLATFORM_FEE_PERCENT: z.coerce.number().min(0).max(50).default(10),
+  // Address lookups for the map: "census" uses the free US Census Bureau geocoder, "off" skips them (tests)
+  GEOCODER: z.enum(['census', 'off']).default('census'),
 });
 
 export type Env = z.infer<typeof envSchema>;

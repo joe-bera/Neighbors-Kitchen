@@ -12,4 +12,6 @@ export const testEnv = {
   REFRESH_TOKEN_TTL_DAYS: '7',
   BCRYPT_ROUNDS: '4',
   FRONTEND_URL: 'http://localhost:3000',
+  // Tests never call the real address service; tests that need a result mock services/geocoding.
+  GEOCODER: 'off',
 };
