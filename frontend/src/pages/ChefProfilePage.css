@@ -173,3 +173,11 @@
 .rating-link:hover .rating-count {
   text-decoration: underline;
 }
+
+.chef-area {
+  margin-top: 2rem;
+}
+
+.chef-area h2 {
+  margin-bottom: 1rem;
+}

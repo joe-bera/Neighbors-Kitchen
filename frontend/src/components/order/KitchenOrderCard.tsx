@@ -3,6 +3,7 @@ import { cancelKitchenOrder, updateKitchenOrderStatus } from '../../services/ord
 import type { KitchenOrder } from '../../types/order.types'
 import { getApiError } from '../../utils/apiError'
 import { formatPrice } from '../../utils/format'
+import { formatDistance } from '../../utils/location'
 import { chefActionLabel, formatOrderTime } from '../../utils/orders'
 import OrderStatusBadge from './OrderStatusBadge'
 
@@ -60,6 +61,7 @@ export default function KitchenOrderCard({ order, onChanged, highlight }: Kitche
       {order.pickupOrDelivery === 'DELIVERY' && (
         <p className="kitchen-order-detail">
           <strong>Deliver to:</strong> {order.deliveryAddress}
+          {order.deliveryDistanceMiles !== null && <> ({formatDistance(order.deliveryDistanceMiles)})</>}
         </p>
       )}
       {order.contactPhone && (

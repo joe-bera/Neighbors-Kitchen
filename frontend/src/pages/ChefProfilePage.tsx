@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Avatar from '../components/common/Avatar'
 import PageLoader from '../components/common/PageLoader'
@@ -14,6 +15,9 @@ import { fetchChef } from '../services/catalogService'
 import { describeHandover, formatLeadTime, summarizeAvailability } from '../utils/availability'
 import { kitchenTitle } from '../utils/format'
 import './ChefProfilePage.css'
+
+// Leaflet only loads on pages that show a map.
+const AreaMap = lazy(() => import('../components/location/AreaMap'))
 
 export default function ChefProfilePage() {
   const { id = '' } = useParams()
@@ -81,10 +85,12 @@ export default function ChefProfilePage() {
             </div>
           )}
           <dl className="fact-list">
-            <div>
-              <dt>Service area</dt>
-              <dd>Within {profile.serviceRadiusMiles} miles of {profile.city}</dd>
-            </div>
+            {profile.offersDelivery && (
+              <div>
+                <dt>Delivery</dt>
+                <dd>Within {profile.serviceRadiusMiles} miles of their kitchen</dd>
+              </div>
+            )}
             {profile.certifications.length > 0 && (
               <div>
                 <dt>Certifications</dt>
@@ -148,6 +154,20 @@ export default function ChefProfilePage() {
           ))
         )}
       </section>
+
+      {profile.area && (
+        <section className="card chef-area" aria-labelledby="area-heading">
+          <h2 id="area-heading">Where {profile.firstName} cooks</h2>
+          <Suspense fallback={<div className="map-frame" />}>
+            <AreaMap area={profile.area} />
+          </Suspense>
+          <p className="map-note">
+            Shown as an area about a mile across, not an exact address. The pickup address is shared after{' '}
+            {profile.firstName} confirms your order.
+            {profile.offersDelivery && ` ${profile.firstName} delivers up to ${profile.serviceRadiusMiles} miles.`}
+          </p>
+        </section>
+      )}
 
       <ReviewsSection
         key={`reviews-${profile.id}`}

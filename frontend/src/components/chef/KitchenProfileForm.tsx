@@ -148,7 +148,7 @@ export default function KitchenProfileForm({ initialKitchen, submitLabel, submit
       <fieldset className="form-section">
         <legend>Where you cook</legend>
         <p className="form-section-note">
-          Your street address stays private. Customers only see your city, and pickup details are shared after an order is confirmed.
+          Your street address stays private. Neighbors see an approximate area about a mile across, and pickup details are shared after an order is confirmed.
         </p>
         <div className="field">
           <label className="field-label" htmlFor="addressLine1">Street address</label>
@@ -178,12 +178,13 @@ export default function KitchenProfileForm({ initialKitchen, submitLabel, submit
           </div>
         </div>
         <div className="field">
-          <label className="field-label" htmlFor="serviceRadiusMiles">How far will you serve?</label>
+          <label className="field-label" htmlFor="serviceRadiusMiles">How far will you deliver?</label>
           <select {...fieldProps('serviceRadiusMiles')}>
             {RADIUS_OPTIONS.map((miles) => (
               <option key={miles} value={miles}>Within {miles} miles</option>
             ))}
           </select>
+          <p className="field-hint">Delivery orders from farther away are turned down automatically.</p>
           {fieldError('serviceRadiusMiles')}
         </div>
       </fieldset>

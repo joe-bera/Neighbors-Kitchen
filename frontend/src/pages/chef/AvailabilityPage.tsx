@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { updateAvailability } from '../../services/kitchenService'
 import { getApiError } from '../../utils/apiError'
@@ -205,6 +206,9 @@ export default function AvailabilityPage() {
             ) : (
               <p className="field-hint">Use 0 for free delivery.</p>
             )}
+            <p className="field-hint">
+              Delivery distance is set on your <Link to="/chef/kitchen" className="text-link">Kitchen profile</Link>.
+            </p>
           </div>
         )}
       </section>

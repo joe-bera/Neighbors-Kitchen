@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { KitchenOrder, OrderStatus } from '../../types/order.types'
+import type { Handover, KitchenOrder, OrderStatus } from '../../types/order.types'
 import KitchenOrderCard from './KitchenOrderCard'
 
 // The card talks to the API through these two calls; replace them so no network is needed.
@@ -56,5 +56,18 @@ describe('KitchenOrderCard', () => {
     await waitFor(() =>
       expect((screen.getByRole('button', { name: 'Mark ready for pickup' }) as HTMLButtonElement).disabled).toBe(false),
     )
+  })
+
+  it('shows roughly how far away a delivery is', () => {
+    const delivery = {
+      ...kitchenOrder('CONFIRMED', 'PREPARING'),
+      pickupOrDelivery: 'DELIVERY' as Handover,
+      deliveryAddress: '1 Orange St, Redlands, CA 92373',
+      deliveryDistanceMiles: 3.2,
+    }
+
+    render(<KitchenOrderCard order={delivery} onChanged={vi.fn()} />)
+
+    expect(screen.getByText(/1 Orange St, Redlands, CA 92373/).textContent).toContain('(3.2 miles away)')
   })
 })
