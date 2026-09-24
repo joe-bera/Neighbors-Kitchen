@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -30,7 +30,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'Neighbors-Kitchen API is running',
@@ -39,7 +39,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // API routes will be added here
-app.get('/api/v1', (req: Request, res: Response) => {
+app.get('/api/v1', (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'Welcome to Neighbors-Kitchen API v1',
@@ -48,7 +48,7 @@ app.get('/api/v1', (req: Request, res: Response) => {
 });
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     error: {
@@ -58,8 +58,8 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Global error handler
-app.use((err: Error, req: Request, res: Response, next: any) => {
+// Global error handler (Express needs all four parameters to treat this as an error handler)
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err);
   res.status(500).json({
     success: false,
