@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide for Neighbors-Kitchen
 
-> **Last Updated:** 2026-09-23
-> **Repository Status:** Phase 1 of 8 complete (see "Build Plan" below)
+> **Last Updated:** 2026-09-24
+> **Repository Status:** Phases 1-4 and 6 complete; Phase 5 waits for Stripe test keys (see "Build Plan" below)
 
 ## Build Plan
 
@@ -11,8 +11,8 @@ The app is built in eight phases, each tested and runnable before the next start
 2. Customers: browse and search chefs and meals, chef and meal pages, working landing page buttons (done)
 3. Chefs: become a chef, chef dashboard, add/edit meals with photos, availability (done)
 4. Ordering: cart, pre-orders with pickup or delivery times, order tracking (done)
-5. Payments: Stripe test mode, platform fee, chef payouts
-6. Reviews, ratings and dish suggestions
+5. Payments: Stripe test mode, platform fee, chef payouts (waiting for the owner's Stripe test keys and Connect)
+6. Reviews, ratings and dish suggestions (done)
 7. Map of nearby chefs, email notifications
 8. Put it live on the internet
 
@@ -46,7 +46,7 @@ After each phase: run the full test suites, run the app and click through the ne
 Neighbors-Kitchen/
 ├── package.json        # root scripts: setup, dev, test, build, db:start/stop/seed
 ├── frontend/           # React 19 + Vite, port 3000 (proxies /api to 4000)
-│   └── src/            # components/{layout,auth,common}, pages/, services/, store/, hooks/, types/, utils/
+│   └── src/            # components/{layout,auth,common,meal,chef,cart,order,feedback}, pages/ (pages/chef = dashboard), services/, store/, hooks/, types/, utils/
 ├── backend/            # Express 5 + Prisma, port 4000
 │   ├── src/            # app.ts, index.ts, config/, controllers/, routes/, services/, middleware/, validators/, lib/, utils/, types/
 │   ├── prisma/         # schema.prisma, migrations/ (committed), seed.ts
@@ -72,6 +72,9 @@ Key conventions already in place:
 - Orders (`services/orderService.ts`): prices, fees and totals are always computed on the server from the menu. `total = subtotal + deliveryFee`; `platformFee` (PLATFORM_FEE_PERCENT of subtotal) comes out of the chef's payout and is never shown to customers. Statuses only move one step at a time (`NEXT_STATUS`); every change writes an `order_events` row. Meal rows are locked (`SELECT ... FOR UPDATE`) while checking `maxOrdersPerDay`. The chef's street address is only returned to the customer after the chef confirms a pickup order.
 - Pickup/delivery times come from `services/scheduling.ts` (Luxon, chef's `timezone`, 30-minute slots, lead time, 14-day window); orders must match an offered slot exactly. The frontend shows times with `utils/orders.ts` in the chef's time zone.
 - The cart (`store/cartStore.ts`, persisted in localStorage) holds one kitchen at a time and is cleared on logout.
+- Reviews (`services/reviewService.ts`): one per meal per completed order (unique `order_id + meal_id`), so every review is a verified purchase. After any review change, call `refreshRatings(tx, mealId, chefId)` in the same transaction; it rewrites `average_rating` / `total_reviews` on the meal and the chef. Public reviews show the customer as "First L." only.
+- Dish requests (`services/suggestionService.ts`): `suggestions.votes` is a cached count kept in step with `suggestion_votes` rows (the requester's own vote is created with the request). Declined requests are hidden from the public page; chefs cannot request or vote on their own kitchen.
+- `optionalAuth` reads the user when an `Authorization` header is sent and lets anonymous visitors through; use it for public endpoints that personalise a little (e.g. "you voted"). On the frontend, `useOwnKitchenId()` tells a chef's page that the viewer owns it.
 
 ### Recommended Structure
 For a full-stack marketplace application, we recommend this structure:
@@ -1242,5 +1245,5 @@ Track these key metrics:
 
 **Note:** This is a living document. As Neighbors-Kitchen develops, this guide should be updated to reflect the actual codebase, conventions, and workflows established by the team.
 
-**Last Updated:** 2026-09-23
-**Contributors:** AI Assistant (Initial comprehensive guide for chef marketplace platform; Phase 1 foundation)
+**Last Updated:** 2026-09-24
+**Contributors:** AI Assistant (Initial comprehensive guide for chef marketplace platform; Phases 1-4 and 6)

@@ -12,10 +12,14 @@ The app is being built in eight phases. Each phase is tested and runnable before
 | 2. Customers | Browse and search chefs and meals, chef profile pages, meal pages, working landing page buttons | ✅ Done |
 | 3. Chefs | Become a chef, chef dashboard, add and edit meals with photos, set availability | ✅ Done |
 | 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ✅ Done |
-| 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏳ Next |
-| 6. Trust | Reviews, ratings and dish suggestions | ⏳ |
-| 7. Local | Find chefs near you on a map, email notifications | ⏳ |
+| 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏸ Waiting for Stripe test keys |
+| 6. Trust | Reviews, ratings and dish suggestions | ✅ Done |
+| 7. Local | Find chefs near you on a map, email notifications | ⏳ Next |
 | 8. Launch | Put it live on the internet | ⏳ |
+
+Phase 6 was built before Phase 5, which is waiting for a Stripe account.
+
+**Phase 5 needs:** a free Stripe account in test mode. Paste the two test keys from dashboard.stripe.com > Developers > API keys into `backend/.env` (`STRIPE_PUBLISHABLE_KEY=pk_test_...` and `STRIPE_SECRET_KEY=sk_test_...`) and turn on Stripe Connect (Connect > Get started) so chefs can be paid out. Test mode never moves real money.
 
 ## Features
 
@@ -61,9 +65,9 @@ Neighbors-Kitchen/
 ├── package.json          # One-command scripts: npm run setup, npm run dev, npm test
 ├── frontend/             # React app (http://localhost:3000)
 │   └── src/
-│       ├── components/   # layout/, auth/, common/
-│       ├── pages/        # HomePage, LoginPage, SignupPage, AccountPage, ...
-│       ├── services/     # API client (api.ts) and authService
+│       ├── components/   # layout/, auth/, common/, meal/, chef/, cart/, order/, feedback/
+│       ├── pages/        # customer pages; pages/chef/ holds the chef dashboard
+│       ├── services/     # API client (api.ts) and one service file per area
 │       ├── store/        # Zustand stores (authStore)
 │       ├── hooks/, types/, utils/
 │
@@ -108,12 +112,15 @@ Then open **http://localhost:3000**. This starts the database (if needed), the A
 
 ### Demo accounts
 
-The sample data includes 8 chefs across the Inland Empire and Coachella Valley, 35 meals, and one customer. Every demo account uses the password `Password123`.
+The sample data includes 8 chefs across the Inland Empire and Coachella Valley, 35 meals, 5 customers, 24 past orders with 23 reviews, and 6 dish requests. Every demo account uses the password `Password123`.
 
 | Account | Email |
 |---------|-------|
-| Customer | `customer@neighborskitchen.test` |
+| Customer (Chris) | `customer@neighborskitchen.test` |
+| More customers (the neighbors who wrote the sample reviews) | `dana@`, `luis@`, `hannah@`, `marcus@neighborskitchen.test` |
 | Chefs | `maria@`, `kenji@`, `aisha@`, `tony@`, `grace@`, `priya@`, `linh@`, `sofia@neighborskitchen.test` |
+
+Chris's past order NK-DEMO08 (Chicken Katsu Curry from Tanaka Home Kitchen) is left unreviewed so you can try "Rate your meals".
 
 In development, the login page has "Customer demo" and "Chef demo" buttons that fill these in.
 
@@ -159,12 +166,13 @@ The application uses PostgreSQL with Prisma ORM. Key models include:
 - **Users** - Customer and chef accounts with role-based access
 - **RefreshTokens** - Login sessions (only hashed tokens are stored)
 - **ChefProfiles** - Chef-specific information including kitchen name, location and ratings
+- **ChefAvailability** - Each chef's weekly cooking hours
 - **Menus** - Chef menu collections
 - **Meals** - Individual dishes with pricing and dietary tags
-- **Orders** - Order management with status tracking
-- **Reviews** - Customer reviews with ratings
-- **Suggestions** - Customer meal requests to chefs
-- **Payments** - Payment and payout tracking
+- **Orders**, **OrderItems**, **OrderEvents** - Orders, the meals in them, and every status change
+- **Reviews** - Customer reviews with ratings and the chef's reply
+- **Suggestions**, **SuggestionVotes** - Dish requests to chefs and who wants them
+- **Payments** - Payment and payout tracking (used from Phase 5)
 
 See `backend/prisma/schema.prisma` for complete schema details.
 
@@ -198,12 +206,22 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 | GET | `/api/v1/chefs/me/orders?view=active\|past` | Orders received by the signed-in chef, with payout after the platform fee |
 | POST | `/api/v1/chefs/me/orders/:id/status` | Chef moves an order one step: CONFIRMED → PREPARING → READY → COMPLETED |
 | POST | `/api/v1/chefs/me/orders/:id/cancel` | Chef declines or cancels an order, with an optional reason |
+| GET | `/api/v1/chefs/:id/reviews`, `/api/v1/meals/:id/reviews` | Reviews of a chef's meals or of one meal, newest first (`page`, `limit`) |
+| POST | `/api/v1/reviews` | Rate a meal from your own completed order: 1 to 5 stars and an optional comment, once per meal per order |
+| POST | `/api/v1/reviews/:id/report` | Report a review for a moderator to look at, with an optional reason |
+| GET | `/api/v1/chefs/:id/suggestions` | Dish requests for a kitchen, most wanted first (declined ones are hidden); signed-in viewers see which ones they voted for |
+| POST | `/api/v1/chefs/:id/suggestions` | Request a dish (up to 5 open requests per person per kitchen) |
+| POST / DELETE | `/api/v1/suggestions/:id/vote` | "I want this too", or take the vote back |
+| GET | `/api/v1/chefs/me/reviews` | Reviews of the signed-in chef's meals |
+| POST | `/api/v1/chefs/me/reviews/:id/response` | Chef posts or edits a public reply to a review |
+| GET | `/api/v1/chefs/me/suggestions` | Dish requests sent to the signed-in chef's kitchen |
+| PUT | `/api/v1/chefs/me/suggestions/:id` | Chef answers a request: thinking about it, yes, or not for my kitchen, with an optional message |
 | GET | `/health` | Health check |
 
 List endpoints return `pagination: { page, limit, total, totalPages }`. Public responses never include a chef's street address, exact location or contact details.
 
 ### Coming in later phases
-Chef dashboard, orders, payments, reviews and suggestions endpoints (see CLAUDE.md for the planned design).
+Payments (Phase 5) and the map and email notifications (Phase 7).
 
 ## Website pages
 
@@ -222,8 +240,11 @@ Chef dashboard, orders, payments, reviews and suggestions endpoints (see CLAUDE.
 | Cart and checkout | `/cart`, `/checkout` |
 | Your orders and order tracking | `/orders`, `/orders/:id` |
 | Chef's incoming orders | `/chef/orders` |
+| Chef's reviews and dish requests | `/chef/feedback`, `/chef/feedback?view=requests` |
 
 **How orders work (Phase 4):** customers fill a cart from one kitchen at a time, pick pickup or delivery and a time slot, and place a pre-order. The chef confirms (or declines), then marks it preparing, ready and picked up/delivered; the customer's order page follows along. Neighbors Kitchen keeps a 10% commission of the meal subtotal from the chef's payout (`PLATFORM_FEE_PERCENT`); customers pay the menu prices plus any delivery fee. Payment is collected in Phase 5.
+
+**How reviews and dish requests work (Phase 6):** once an order is completed, the customer's order page shows "Rate your meals" (stars plus an optional comment, one review per meal). Only real orders can be reviewed, so every review is a verified purchase. Ratings on chef and meal pages update right away. Chefs reply publicly from the Feedback tab of their dashboard, and anyone signed in can report a review. On a chef's page, neighbors can request a dish and vote "I want this too"; the chef answers each request (thinking about it, yes, or not for my kitchen) with an optional message shown on their page.
 
 Uploaded photos are stored in `backend/uploads/` during development (not committed to git). Production photo storage is set up in Phase 8.
 
