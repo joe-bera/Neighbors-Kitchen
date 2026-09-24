@@ -86,12 +86,26 @@ describe('geocodeAddress', () => {
     expect(await geocodeAddress(ADDRESS)).toBeNull();
   });
 
-  it('puts a time limit on the request', async () => {
+  it('puts a 6-second time limit on the request', async () => {
+    const timeLimit = vi.spyOn(AbortSignal, 'timeout');
     fetchMock.mockResolvedValue(censusAnswer([]));
 
     await geocodeAddress(ADDRESS);
 
-    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+    expect(timeLimit).toHaveBeenCalledWith(6000);
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBe(timeLimit.mock.results[0].value);
+  });
+
+  it('keeps the retry inside the same 6 seconds, so callers never wait twice as long', async () => {
+    const timeLimit = vi.spyOn(AbortSignal, 'timeout');
+    fetchMock.mockResolvedValue(censusAnswer([]));
+
+    await geocodeAddress('73-510 Fred Waring Dr, Palm Desert, CA 92260');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(timeLimit).toHaveBeenCalledTimes(1);
+    const [first, second] = fetchMock.mock.calls.map((call) => (call[1] as RequestInit).signal);
+    expect(second).toBe(first);
   });
 
   it('does not call the service when lookups are off', async () => {
