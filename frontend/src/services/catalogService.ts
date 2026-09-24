@@ -3,6 +3,7 @@ import type {
   CatalogFilters,
   ChefCardData,
   ChefDetail,
+  ChefMapData,
   MealDetail,
   MealWithChef,
   Paginated,
@@ -15,6 +16,11 @@ type ListResponse<T> = ApiSuccess<T[]> & { pagination: Pagination }
 export async function fetchChefs(params: URLSearchParams): Promise<Paginated<ChefCardData>> {
   const { data } = await api.get<ListResponse<ChefCardData>>('/chefs', { params })
   return { items: data.data, pagination: data.pagination }
+}
+
+export async function fetchChefMap(params: URLSearchParams): Promise<ChefMapData> {
+  const { data } = await api.get<ApiSuccess<ChefMapData>>('/chefs/map', { params })
+  return data.data
 }
 
 export async function fetchChef(id: string): Promise<ChefDetail> {

@@ -37,6 +37,7 @@ function kitchenOrder(status: OrderStatus, nextStatus: OrderStatus | null): Kitc
     items: [{ mealId: 'meal-1', mealName: 'Enchiladas', quantity: 2, priceAtPurchase: 14, lineTotal: 28 }],
     events: [],
     canCancel: true,
+    deliveryDistanceMiles: null,
   }
 }
 

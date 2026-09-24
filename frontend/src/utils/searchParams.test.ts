@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { withUpdatedParams } from './searchParams'
+import { withUpdatedParams, withoutParams } from './searchParams'
 
 describe('withUpdatedParams', () => {
   it('sets new values, removes empty ones and goes back to the first page', () => {
@@ -28,5 +28,14 @@ describe('withUpdatedParams', () => {
     withUpdatedParams(current, { search: 'pho' })
 
     expect(current.toString()).toBe('search=taco')
+  })
+})
+
+describe('withoutParams', () => {
+  it('copies the parameters without the named ones', () => {
+    const current = new URLSearchParams('near=92373&view=map&page=2')
+
+    expect(withoutParams(current, 'view', 'page').toString()).toBe('near=92373')
+    expect(current.toString()).toBe('near=92373&view=map&page=2')
   })
 })

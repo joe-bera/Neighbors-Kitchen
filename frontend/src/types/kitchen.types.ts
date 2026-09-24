@@ -1,4 +1,4 @@
-import type { MealCardData, MealCategory } from './catalog.types'
+import type { ChefArea, MealCardData, MealCategory } from './catalog.types'
 
 /** Weekly hours, in the chef's local time. dayOfWeek: 0 = Sunday ... 6 = Saturday. */
 export interface AvailabilityWindow {
@@ -20,6 +20,8 @@ export interface OwnKitchen {
   city: string
   state: string
   zipCode: string
+  /** The approximate area neighbors see, or null if the address could not be placed on the map. */
+  area: ChefArea | null
   serviceRadiusMiles: number
   isAcceptingOrders: boolean
   orderLeadTimeHours: number

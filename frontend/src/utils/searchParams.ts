@@ -19,3 +19,10 @@ export function withUpdatedParams(
   }
   return next
 }
+
+/** A copy of `current` without the named parameters. */
+export function withoutParams(current: URLSearchParams, ...names: string[]): URLSearchParams {
+  const next = new URLSearchParams(current)
+  for (const name of names) next.delete(name)
+  return next
+}

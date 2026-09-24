@@ -49,6 +49,18 @@ export interface MealDetail extends MealWithChef {
   moreFromChef: MealCardData[]
 }
 
+/** Where a chef cooks, shown as a circle. Never the exact address. */
+export interface ChefArea {
+  latitude: number
+  longitude: number
+  radiusMiles: number
+}
+
+export interface MapPoint {
+  latitude: number
+  longitude: number
+}
+
 export interface ChefCardData {
   id: string
   kitchenName: string | null
@@ -65,6 +77,8 @@ export interface ChefCardData {
   isAcceptingOrders: boolean
   mealCount: number
   coverImageUrl: string | null
+  /** Miles from the searched place, when searching near a place. */
+  distanceMiles: number | null
 }
 
 export interface ChefMenu {
@@ -77,6 +91,7 @@ export interface ChefMenu {
 export interface ChefDetail extends ChefCardData {
   certifications: string[]
   serviceRadiusMiles: number
+  area: ChefArea | null
   memberSince: string
   menus: ChefMenu[]
   availability: { dayOfWeek: number; startTime: string; endTime: string }[]
@@ -91,4 +106,23 @@ export interface CatalogFilters {
   cuisines: string[]
   dietaryTags: string[]
   cities: string[]
+}
+
+export interface ChefMapPin {
+  id: string
+  kitchenName: string | null
+  chefName: string
+  firstName: string
+  city: string
+  averageRating: number | null
+  totalReviews: number
+  isAcceptingOrders: boolean
+  distanceMiles: number | null
+  area: ChefArea
+}
+
+export interface ChefMapData {
+  /** Where the search starts: a ZIP code's middle or the browser's location. */
+  origin: MapPoint | null
+  chefs: ChefMapPin[]
 }

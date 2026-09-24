@@ -57,6 +57,8 @@ export interface KitchenOrder extends OrderBase {
   platformFee: number
   chefPayout: number
   nextStatus: OrderStatus | null
+  /** Straight-line miles to a delivery address, when it could be placed on the map. */
+  deliveryDistanceMiles: number | null
 }
 
 export interface OrderSlots {
