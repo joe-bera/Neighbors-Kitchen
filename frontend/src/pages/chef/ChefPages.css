@@ -1,0 +1,387 @@
+/* Kitchen setup */
+.kitchen-setup {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.kitchen-setup-header h1 {
+  font-size: 2.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.kitchen-setup-header p {
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+}
+
+/* Dashboard shell */
+.chef-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.chef-dashboard-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.chef-dashboard-eyebrow {
+  color: var(--color-brand-strong);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chef-dashboard-header h1 {
+  font-size: 2rem;
+}
+
+.chef-dashboard-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dashboard-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 2px solid var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dashboard-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-tab {
+  padding: 0.75rem 1rem;
+  margin-bottom: -2px;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-tab:hover {
+  color: var(--color-brand-strong);
+}
+
+.dashboard-tab.active {
+  color: var(--color-brand-strong);
+  border-bottom-color: var(--color-brand-strong);
+}
+
+.dashboard-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dashboard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dashboard-section h2 {
+  font-size: 1.35rem;
+}
+
+.dashboard-section .card > h2 {
+  margin-bottom: 0.75rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.dashboard-section .section-heading {
+  margin-bottom: 0;
+}
+
+/* Overview */
+.checklist {
+  border-left: 4px solid var(--color-brand-strong);
+}
+
+.checklist-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.checklist-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.checklist-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.checklist-steps li.is-done {
+  color: var(--color-text-subtle);
+}
+
+.checklist-steps li.is-done .checklist-mark {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: white;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-brand-strong);
+  line-height: 1.2;
+}
+
+.stat-value--rating {
+  font-size: 1.25rem;
+  min-height: 2.4rem;
+  display: flex;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+/* Meals list */
+.meal-rows {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.meal-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+}
+
+.meal-row-photo {
+  width: 72px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-surface-muted);
+}
+
+.meal-row-photo .meal-image--placeholder {
+  font-size: 0.65rem;
+  text-align: center;
+}
+
+.meal-row-name {
+  font-weight: 700;
+}
+
+.meal-row-meta {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.meal-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.confirm-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Meal form */
+.meal-form {
+  max-width: 720px;
+}
+
+.photo-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.photo-upload-preview {
+  position: relative;
+  width: 220px;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-surface-muted);
+  box-shadow: var(--shadow);
+}
+
+.photo-upload-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.photo-upload-actions {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.photo-upload-actions:has(input:focus-visible) label {
+  box-shadow: var(--focus-ring);
+}
+
+.photo-upload-actions label[aria-disabled='true'] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Weekly hours editor */
+.week-editor {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1rem;
+}
+
+.week-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.week-row:last-child {
+  border-bottom: none;
+}
+
+.week-row-day {
+  font-weight: 600;
+}
+
+.week-row-times {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.week-row-times .field-input {
+  width: auto;
+  padding: 0.5rem 0.6rem;
+}
+
+.week-row-closed {
+  color: var(--color-text-subtle);
+}
+
+.week-row-error {
+  grid-column: 2;
+}
+
+.schedule-preview {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.schedule-preview .field-label {
+  margin-bottom: 0.5rem;
+}
+
+.schedule-preview .hours-list {
+  margin-bottom: 0;
+}
+
+.dashboard-section .checkbox-group {
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 700px) {
+  .meal-row {
+    grid-template-columns: 64px 1fr;
+  }
+
+  .meal-row-photo {
+    width: 64px;
+    height: 50px;
+  }
+
+  .meal-row .status-pill {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .meal-row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .week-row {
+    grid-template-columns: 1fr;
+  }
+
+  .week-row-error {
+    grid-column: 1;
+  }
+
+  .photo-upload-preview {
+    width: 100%;
+  }
+}

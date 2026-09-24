@@ -43,6 +43,9 @@ export function createApp(): Express {
     });
   });
 
+  // Uploaded photos have random, never-reused names, so browsers may cache them for a long time.
+  app.use('/uploads', express.static(env.UPLOAD_DIR, { index: false, immutable: true, maxAge: '30d' }));
+
   app.use('/api/v1', apiRoutes);
 
   app.use(notFoundHandler);

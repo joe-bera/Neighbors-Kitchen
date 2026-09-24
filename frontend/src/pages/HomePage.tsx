@@ -21,7 +21,8 @@ export default function HomePage() {
   usePageTitle()
   const navigate = useNavigate()
   const status = useAuthStore((state) => state.status)
-  const becomeChefLink = status === 'authenticated' ? '/account' : '/signup?role=chef'
+  // Signed-in people set up a kitchen (chefs who already have one are sent on to their dashboard).
+  const becomeChefLink = status === 'authenticated' ? '/chef/setup' : '/signup?role=chef'
 
   const searchMeals = (value: string) => {
     navigate(value ? `/meals?${new URLSearchParams({ search: value })}` : '/meals')

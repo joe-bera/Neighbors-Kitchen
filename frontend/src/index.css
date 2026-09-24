@@ -542,3 +542,231 @@ img {
     grid-template-columns: 1fr;
   }
 }
+
+/* Shared text and status styles */
+.card-text {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.card-note {
+  margin-top: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--color-text-subtle);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.text-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-brand-strong);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.text-button:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.text-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 4px;
+}
+
+.text-button--danger {
+  color: var(--color-danger);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #9b2c2c;
+}
+
+.order-status,
+.status-pill {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.order-status--open,
+.status-pill--on {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+/* Form building blocks */
+textarea.field-input {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+.field-input--auto {
+  width: auto;
+  min-width: 220px;
+}
+
+.field--narrow {
+  max-width: 220px;
+}
+
+.form-section {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-section + .form-section {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.form-section legend {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.form-section-note {
+  margin-top: -0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-ink);
+  font-size: 0.9rem;
+}
+
+.form-row--address {
+  grid-template-columns: 2fr 1fr 1.2fr;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.checkbox-group {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.checkbox-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.checkbox-option input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--color-brand-strong);
+}
+
+.checkbox-option--emphasis {
+  font-weight: 600;
+}
+
+/* On/off switch */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.toggle-track {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--color-border-strong);
+  transition: background-color 0.2s;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s;
+}
+
+.toggle-input:checked + .toggle-track {
+  background: var(--color-success);
+}
+
+.toggle-input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-input:focus-visible + .toggle-track {
+  box-shadow: var(--focus-ring);
+}
+
+.toggle-input:disabled + .toggle-track {
+  opacity: 0.6;
+}
+
+.toggle-label {
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .form-row--address {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .form-row--address .field:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Opening hours, one line per set of hours */
+.hours-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}

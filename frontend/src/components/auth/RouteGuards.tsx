@@ -5,8 +5,16 @@ import type { UserRole } from '../../types/user.types'
 import { getSafeRedirect } from '../../utils/safeRedirect'
 import PageLoader from '../common/PageLoader'
 
+interface ProtectedRouteProps {
+  children: ReactNode
+  /** Limit the page to these roles. */
+  roles?: UserRole[]
+  /** Where signed-in users without one of the roles are sent. */
+  otherRolesRedirectTo?: string
+}
+
 /** Only for signed-in users; others are sent to the login page and brought back afterwards. */
-export function ProtectedRoute({ children, roles }: { children: ReactNode; roles?: UserRole[] }) {
+export function ProtectedRoute({ children, roles, otherRolesRedirectTo = '/' }: ProtectedRouteProps) {
   const { status, user } = useAuthStore()
   const location = useLocation()
 
@@ -15,7 +23,7 @@ export function ProtectedRoute({ children, roles }: { children: ReactNode; roles
     const redirect = encodeURIComponent(location.pathname + location.search)
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }
-  if (roles && user && !roles.includes(user.role)) return <Navigate to="/" replace />
+  if (roles && user && !roles.includes(user.role)) return <Navigate to={otherRolesRedirectTo} replace />
   return children
 }
 

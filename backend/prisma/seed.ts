@@ -648,6 +648,24 @@ const customers = [
   { email: 'customer@neighborskitchen.test', firstName: 'Chris', lastName: 'Walker' },
 ];
 
+// When each chef has food ready (0 = Sunday ... 6 = Saturday) and how it is handed over.
+const weekly = (days: number[], startTime: string, endTime: string) =>
+  days.map((dayOfWeek) => ({ dayOfWeek, startTime, endTime }));
+
+const fulfillment: Record<
+  string,
+  { availability: ReturnType<typeof weekly>; orderLeadTimeHours: number; offersDelivery: boolean; deliveryFee: number }
+> = {
+  'maria@neighborskitchen.test': { availability: weekly([2, 3, 4, 5, 6], '17:00', '20:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 4.99 },
+  'kenji@neighborskitchen.test': { availability: weekly([0, 3, 4, 5, 6], '16:30', '19:30'), orderLeadTimeHours: 24, offersDelivery: false, deliveryFee: 0 },
+  'aisha@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '11:00', '14:00'), orderLeadTimeHours: 12, offersDelivery: true, deliveryFee: 3.99 },
+  'tony@neighborskitchen.test': { availability: weekly([0, 5, 6], '16:00', '19:00'), orderLeadTimeHours: 48, offersDelivery: true, deliveryFee: 5.99 },
+  'grace@neighborskitchen.test': { availability: weekly([0, 6], '12:00', '18:00'), orderLeadTimeHours: 48, offersDelivery: false, deliveryFee: 0 },
+  'priya@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '17:30', '20:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 4.49 },
+  'linh@neighborskitchen.test': { availability: weekly([0, 2, 3, 4, 5, 6], '11:00', '15:00'), orderLeadTimeHours: 12, offersDelivery: false, deliveryFee: 0 },
+  'sofia@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '08:00', '12:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 2.99 },
+};
+
 async function upsertUser(
   data: { email: string; firstName: string; lastName: string },
   role: UserRole,
@@ -661,13 +679,20 @@ async function upsertUser(
 }
 
 async function seedChef(chef: SeedChef, passwordHash: string) {
-  const { meals, menuName, menuDescription, email, firstName, lastName, ...profile } = chef;
+  const { meals, menuName, menuDescription, email, firstName, lastName, ...details } = chef;
+  const { availability, ...handover } = fulfillment[email];
+  const profile = { ...details, ...handover, offersPickup: true, isAcceptingOrders: true };
   const user = await upsertUser({ email, firstName, lastName }, 'CHEF', passwordHash);
 
   const chefProfile = await prisma.chefProfile.upsert({
     where: { userId: user.id },
     update: profile,
     create: { ...profile, userId: user.id },
+  });
+
+  await prisma.chefAvailability.deleteMany({ where: { chefId: chefProfile.id } });
+  await prisma.chefAvailability.createMany({
+    data: availability.map((window) => ({ ...window, chefId: chefProfile.id })),
   });
 
   const existingMenu = await prisma.menu.findFirst({ where: { chefId: chefProfile.id, name: menuName } });

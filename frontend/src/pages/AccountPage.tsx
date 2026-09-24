@@ -69,7 +69,7 @@ export default function AccountPage() {
 
       <header className="account-header">
         <h1>Welcome, {user.firstName}</h1>
-        <p>{isChef ? 'This is where you will manage your kitchen and meals.' : 'Your home for ordering from local chefs.'}</p>
+        <p>{isChef ? 'Your account details and a snapshot of your kitchen.' : 'Your home for ordering from local chefs.'}</p>
       </header>
 
       <div className="account-grid">
@@ -101,9 +101,11 @@ export default function AccountPage() {
           <section className="card" aria-labelledby="setup-heading">
             <h2 id="setup-heading">Set up your kitchen</h2>
             <p className="card-text">
-              Next you will add your kitchen name, a short bio, your location and your first meals.
-              Kitchen setup is coming soon.
+              Add your kitchen name, a short bio and where you cook. Then you can add meals and your weekly hours.
             </p>
+            <div className="card-actions">
+              <Link to="/chef/setup" className="btn btn-primary">Set up my kitchen</Link>
+            </div>
           </section>
         )}
 
@@ -117,6 +119,18 @@ export default function AccountPage() {
             <div className="card-actions">
               <Link to="/meals" className="btn btn-primary">Browse meals</Link>
               <Link to="/chefs" className="btn btn-outline">Meet the chefs</Link>
+            </div>
+          </section>
+        )}
+
+        {!isChef && (
+          <section className="card" aria-labelledby="cook-heading">
+            <h2 id="cook-heading">Love to cook?</h2>
+            <p className="card-text">
+              Share your cooking with neighbors and earn money from your kitchen. You can still order from other chefs.
+            </p>
+            <div className="card-actions">
+              <Link to="/chef/setup" className="btn btn-outline">Become a chef</Link>
             </div>
           </section>
         )}
@@ -148,7 +162,9 @@ function KitchenCard({ kitchen, ownerFirstName }: { kitchen: ChefProfileSummary;
           <span>for new orders</span>
         </div>
       </div>
-      <p className="card-note">Editing your kitchen and meals is coming with the chef dashboard.</p>
+      <div className="card-actions">
+        <Link to="/chef" className="btn btn-primary">Go to your dashboard</Link>
+      </div>
     </section>
   )
 }

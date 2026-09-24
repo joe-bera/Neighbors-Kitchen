@@ -1,4 +1,5 @@
 .navbar {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -15,6 +16,7 @@
 }
 
 .navbar--transparent {
+  z-index: 10;
   padding: 1.5rem 5%;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -65,36 +67,87 @@
   font-weight: 700;
 }
 
-@media (max-width: 768px) {
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+}
+
+.navbar--solid .nav-toggle {
+  color: var(--color-text);
+}
+
+.nav-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Phones and small tablets: links move into a drop-down menu */
+@media (max-width: 860px) {
   .navbar,
   .navbar--transparent {
-    padding: 1rem 16px;
-  }
-
-  .nav-section-link {
-    display: none;
-  }
-
-  .nav-links {
-    gap: 1rem;
+    padding: 0.75rem 16px;
   }
 
   .logo {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
   }
 
   .logo-icon {
     font-size: 1.6rem;
   }
-}
 
-@media (max-width: 480px) {
-  .logo-text,
-  .nav-login-link {
-    display: none;
+  .nav-toggle {
+    display: inline-flex;
   }
 
   .nav-links {
-    gap: 0.75rem;
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0.5rem 16px 1rem;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .nav-links.is-open {
+    display: flex;
+  }
+
+  .nav-links .nav-link {
+    padding: 0.85rem 0.25rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+  }
+
+  .nav-links .nav-link.active {
+    color: var(--color-brand-strong);
+  }
+
+  .nav-links .btn {
+    margin-top: 0.75rem;
+  }
+
+  /* On the white drop-down, the hero-style buttons need regular colors */
+  .nav-links .btn-light {
+    background: var(--color-brand-strong);
+    color: white;
+  }
+
+  .nav-links .btn-outline-light {
+    color: var(--color-brand-strong);
+    border-color: var(--color-brand-strong);
   }
 }

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -11,6 +12,8 @@ const envSchema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(1000),
+  // Where uploaded photos are stored and served from (/uploads/...)
+  UPLOAD_DIR: z.string().min(1).default(path.resolve('uploads')),
 });
 
 export type Env = z.infer<typeof envSchema>;

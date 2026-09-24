@@ -45,7 +45,8 @@ export default function SignupPage() {
     setFormError(null)
     try {
       await signup(values)
-      navigate('/account', { replace: true, state: { justSignedUp: true } })
+      // New chefs go straight to setting up their kitchen.
+      navigate(values.role === 'CHEF' ? '/chef/setup' : '/account', { replace: true, state: { justSignedUp: true } })
     } catch (error) {
       const apiError = getApiError(error)
       const fieldErrors = Object.entries(apiError.details ?? {}).filter(([field]) =>

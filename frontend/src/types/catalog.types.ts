@@ -79,6 +79,11 @@ export interface ChefDetail extends ChefCardData {
   serviceRadiusMiles: number
   memberSince: string
   menus: ChefMenu[]
+  availability: { dayOfWeek: number; startTime: string; endTime: string }[]
+  orderLeadTimeHours: number
+  offersPickup: boolean
+  offersDelivery: boolean
+  deliveryFee: number
 }
 
 export interface CatalogFilters {

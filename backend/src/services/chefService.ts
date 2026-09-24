@@ -107,6 +107,10 @@ export async function getChefProfile(id: string) {
     where: { id, ...visibleChefWhere },
     include: {
       ...chefCardInclude,
+      availability: {
+        orderBy: { dayOfWeek: 'asc' },
+        select: { dayOfWeek: true, startTime: true, endTime: true },
+      },
       menus: {
         where: { isActive: true },
         orderBy: { createdAt: 'asc' },
@@ -123,6 +127,11 @@ export async function getChefProfile(id: string) {
     certifications: chef.certifications,
     serviceRadiusMiles: chef.serviceRadiusMiles.toNumber(),
     memberSince: chef.createdAt,
+    availability: chef.availability,
+    orderLeadTimeHours: chef.orderLeadTimeHours,
+    offersPickup: chef.offersPickup,
+    offersDelivery: chef.offersDelivery,
+    deliveryFee: chef.deliveryFee.toNumber(),
     menus: chef.menus
       .filter((menu) => menu.meals.length > 0)
       .map((menu) => ({

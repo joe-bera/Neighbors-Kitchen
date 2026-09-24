@@ -116,13 +116,20 @@ model ChefProfile {
   city                    String
   state                   String
   zipCode                 String   @map("zip_code")
-  latitude                Decimal  @db.Decimal(10, 8)
-  longitude               Decimal  @db.Decimal(11, 8)
+  // Filled in by geocoding (Phase 7); never sent in public responses
+  latitude                Decimal? @db.Decimal(10, 8)
+  longitude               Decimal? @db.Decimal(11, 8)
   serviceRadiusMiles      Decimal  @default(5.0) @map("service_radius_miles") @db.Decimal(5, 2)
   averageRating           Decimal? @map("average_rating") @db.Decimal(3, 2)
   totalReviews            Int      @default(0) @map("total_reviews")
   totalOrders             Int      @default(0) @map("total_orders")
   isAcceptingOrders       Boolean  @default(true) @map("is_accepting_orders")
+  // How orders are fulfilled
+  orderLeadTimeHours      Int      @default(24) @map("order_lead_time_hours")
+  offersPickup            Boolean  @default(true) @map("offers_pickup")
+  offersDelivery          Boolean  @default(false) @map("offers_delivery")
+  deliveryFee             Decimal  @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  timezone                String   @default("America/Los_Angeles")
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 
@@ -133,10 +140,26 @@ model ChefProfile {
   ordersAsChef            Order[]      @relation("ChefOrders")
   reviews                 Review[]
   suggestions             Suggestion[]
+  availability            ChefAvailability[]
 
   @@index([userId])
   @@index([latitude, longitude])
   @@map("chef_profiles")
+}
+
+// Weekly hours when a chef has food ready for pickup or delivery, in the chef's local time.
+model ChefAvailability {
+  id          String   @id @default(uuid())
+  chefId      String   @map("chef_id")
+  dayOfWeek   Int      @map("day_of_week") // 0 = Sunday ... 6 = Saturday
+  startTime   String   @map("start_time")  // "17:00"
+  endTime     String   @map("end_time")    // "20:00"
+
+  // Relations
+  chef        ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@unique([chefId, dayOfWeek])
+  @@map("chef_availability")
 }
 
 model Menu {

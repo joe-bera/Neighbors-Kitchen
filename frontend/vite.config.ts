@@ -10,6 +10,7 @@ export default defineConfig({
     // Forward API calls to the backend, so the browser only talks to one origin.
     proxy: {
       '/api': 'http://localhost:4000',
+      '/uploads': 'http://localhost:4000',
     },
   },
 })

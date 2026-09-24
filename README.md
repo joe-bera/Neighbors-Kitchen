@@ -10,8 +10,8 @@ The app is being built in eight phases. Each phase is tested and runnable before
 |-------|--------------|--------|
 | 1. Foundation | Database connected, sample chefs and meals, sign-up and login for customers and chefs | ✅ Done |
 | 2. Customers | Browse and search chefs and meals, chef profile pages, meal pages, working landing page buttons | ✅ Done |
-| 3. Chefs | Become a chef, chef dashboard, add and edit meals with photos, set availability | ⏳ Next |
-| 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ⏳ |
+| 3. Chefs | Become a chef, chef dashboard, add and edit meals with photos, set availability | ✅ Done |
+| 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ⏳ Next |
 | 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏳ |
 | 6. Trust | Reviews, ratings and dish suggestions | ⏳ |
 | 7. Local | Find chefs near you on a map, email notifications | ⏳ |
@@ -185,6 +185,12 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 | GET | `/api/v1/meals` | Browse meals: `search`, `category`, `cuisine`, `dietary` (comma-separated, all must match), `maxPrice`, `chefId`, `sort` (`recommended`, `price_asc`, `price_desc`, `newest`), `page`, `limit` |
 | GET | `/api/v1/meals/filters` | Cuisines, dietary tags and cities that currently have meals |
 | GET | `/api/v1/meals/:id` | Meal details, its chef, and more meals from the same chef |
+| POST | `/api/v1/chefs` | Become a chef: set up a kitchen (customers are upgraded to chefs) |
+| GET / PUT | `/api/v1/chefs/me` | The signed-in chef's own kitchen, including private address; update it or pause orders |
+| PUT | `/api/v1/chefs/me/availability` | Weekly hours, order lead time, pickup/delivery and delivery fee |
+| GET / POST | `/api/v1/chefs/me/meals` | The chef's own meals (including hidden ones); add a meal |
+| PUT / DELETE | `/api/v1/chefs/me/meals/:id` | Edit, hide/show or delete a meal (meals with orders cannot be deleted) |
+| POST | `/api/v1/uploads/meal-photo` | Upload a meal photo (JPG/PNG/WebP, max 5 MB); saved as a resized WebP without location data |
 | GET | `/health` | Health check |
 
 List endpoints return `pagination: { page, limit, total, totalPages }`. Public responses never include a chef's street address, exact location or contact details.
@@ -203,6 +209,11 @@ Chef dashboard, orders, payments, reviews and suggestions endpoints (see CLAUDE.
 | Chef profile and menu | `/chefs/:id` |
 | Sign up / Log in | `/signup`, `/login` |
 | My account | `/account` |
+| Set up a kitchen (become a chef) | `/chef/setup` |
+| Chef dashboard: overview, meals, hours & delivery, kitchen profile | `/chef`, `/chef/meals`, `/chef/availability`, `/chef/kitchen` |
+| Add / edit a meal | `/chef/meals/new`, `/chef/meals/:id/edit` |
+
+Uploaded photos are stored in `backend/uploads/` during development (not committed to git). Production photo storage is set up in Phase 8.
 
 ## Environment Variables
 

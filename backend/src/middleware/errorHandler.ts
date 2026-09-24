@@ -1,6 +1,15 @@
 import { NextFunction, Request, Response } from 'express';
+import multer from 'multer';
 import { isProduction } from '../config/env.js';
 import { AppError } from '../utils/errors.js';
+
+/** Turns file-upload errors into the same shape as other client errors. */
+function fromUploadError(err: multer.MulterError): AppError {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return new AppError(413, 'FILE_TOO_LARGE', 'Photos must be 5 MB or smaller');
+  }
+  return new AppError(400, 'UPLOAD_ERROR', 'That upload could not be processed');
+}
 
 export function notFoundHandler(_req: Request, res: Response) {
   res.status(404).json({
@@ -19,7 +28,9 @@ function isClientHttpError(err: unknown): err is { status: number } {
 }
 
 // Express needs all four parameters to treat this as an error handler
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(caught: unknown, _req: Request, res: Response, _next: NextFunction) {
+  const err = caught instanceof multer.MulterError ? fromUploadError(caught) : caught;
+
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       success: false,

@@ -8,6 +8,7 @@ import MealImage from '../components/meal/MealImage'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { fetchChef } from '../services/catalogService'
+import { describeHandover, formatLeadTime, summarizeAvailability } from '../utils/availability'
 import { kitchenTitle } from '../utils/format'
 import './ChefProfilePage.css'
 
@@ -32,6 +33,7 @@ export default function ChefProfilePage() {
   const profile = chef.data
   const title = kitchenTitle(profile)
   const memberSince = new Date(profile.memberSince).getFullYear()
+  const hours = summarizeAvailability(profile.availability)
 
   return (
     <div className="container chef-profile">
@@ -93,9 +95,27 @@ export default function ChefProfilePage() {
           <p className={`order-status ${profile.isAcceptingOrders ? 'order-status--open' : ''}`}>
             {profile.isAcceptingOrders ? 'Taking pre-orders' : 'Not taking orders right now'}
           </p>
-          <p className="card-note">
-            Online ordering opens soon. Browse the menu below to see what {profile.firstName} is cooking.
-          </p>
+          <dl className="fact-list order-facts">
+            <div>
+              <dt>Food is ready</dt>
+              <dd>
+                {hours.length > 0 ? (
+                  <ul className="hours-list">{hours.map((line) => <li key={line}>{line}</li>)}</ul>
+                ) : (
+                  'Hours coming soon'
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Order ahead</dt>
+              <dd>At least {formatLeadTime(profile.orderLeadTimeHours)} before</dd>
+            </div>
+            <div>
+              <dt>Getting your food</dt>
+              <dd>{describeHandover(profile)}</dd>
+            </div>
+          </dl>
+          <p className="card-note">Online ordering opens soon.</p>
         </aside>
       </div>
 

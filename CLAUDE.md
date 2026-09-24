@@ -9,7 +9,7 @@ The app is built in eight phases, each tested and runnable before the next start
 
 1. Foundation: database, sample chefs and meals, sign-up and login (done)
 2. Customers: browse and search chefs and meals, chef and meal pages, working landing page buttons (done)
-3. Chefs: become a chef, chef dashboard, add/edit meals with photos, availability
+3. Chefs: become a chef, chef dashboard, add/edit meals with photos, availability (done)
 4. Ordering: cart, pre-orders with pickup or delivery times, order tracking
 5. Payments: Stripe test mode, platform fee, chef payouts
 6. Reviews, ratings and dish suggestions
@@ -65,6 +65,10 @@ Key conventions already in place:
 - Public catalog visibility lives in `backend/src/services/catalogShared.ts`: a meal is orderable only if it is available, on an active menu, from an active chef account. Reuse `orderableMealWhere` / `visibleChefWhere` instead of re-writing the conditions, and never add address, lat/long, email or phone to public responses (`tests/chefs.test.ts` checks this).
 - Prisma `Decimal` fields (prices, ratings) must be converted with `.toNumber()` before sending JSON.
 - Frontend data loading uses `useAsyncData(key, loader)`; list pages keep filters in the URL (`useSearchParams` + `withUpdatedParams`).
+- Chef-only endpoints live under `/api/v1/chefs/me` (`routes/kitchenRoutes.ts`) and are scoped to the signed-in chef via `requireOwnKitchen(userId)`; another chef's meal must look like a 404, never a 403. `/chefs/me` is mounted before `/chefs/:id`.
+- Meal photos go through `POST /api/v1/uploads/meal-photo` (`services/uploadService.ts`): sharp re-encodes to WebP (max 1600px) and drops EXIF/GPS. Meals only accept `imageUrl` values from that endpoint (or the photo they already had). Files are served from `UPLOAD_DIR` at `/uploads/...`.
+- Chef weekly hours are `chef_availability` rows (0 = Sunday, local "HH:MM" times, one window per day) plus `orderLeadTimeHours`, `offersPickup`, `offersDelivery`, `deliveryFee` and `timezone` on the chef profile. Frontend helpers: `utils/availability.ts`.
+- The chef dashboard (`pages/chef/`) gets the kitchen from `ChefLayout` through `useChefKitchen()`; call `setKitchen` after saving and `reloadKitchen` when counts change.
 
 ### Recommended Structure
 For a full-stack marketplace application, we recommend this structure:
