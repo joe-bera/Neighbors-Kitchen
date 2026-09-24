@@ -1,14 +1,31 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import ChefCard from '../components/chef/ChefCard'
+import PageLoader from '../components/common/PageLoader'
+import SearchForm from '../components/common/SearchForm'
 import Footer from '../components/layout/Footer'
 import Navbar from '../components/layout/Navbar'
+import MealCard from '../components/meal/MealCard'
+import { useAsyncData } from '../hooks/useAsyncData'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { fetchChefs, fetchMeals } from '../services/catalogService'
 import { useAuthStore } from '../store/authStore'
+import { pickOnePerChef } from '../utils/featured'
 import './HomePage.css'
+
+const FEATURED_COUNT = 4
+// Load extra meals so the featured row can show one dish from each of several chefs.
+const FEATURED_MEAL_POOL = new URLSearchParams({ limit: '40' })
+const FEATURED_CHEFS = new URLSearchParams({ limit: String(FEATURED_COUNT) })
 
 export default function HomePage() {
   usePageTitle()
+  const navigate = useNavigate()
   const status = useAuthStore((state) => state.status)
   const becomeChefLink = status === 'authenticated' ? '/account' : '/signup?role=chef'
+
+  const searchMeals = (value: string) => {
+    navigate(value ? `/meals?${new URLSearchParams({ search: value })}` : '/meals')
+  }
 
   return (
     <div className="app-shell">
@@ -22,12 +39,22 @@ export default function HomePage() {
             Connect with talented chefs in your neighborhood. Order delicious,
             authentic meals made with love, right in your community.
           </p>
+          <SearchForm
+            variant="hero"
+            initialValue=""
+            label="Search meals"
+            placeholder="What are you craving? Try tacos, pho or vegan"
+            onSearch={searchMeals}
+          />
           <div className="hero-buttons">
-            <button type="button" className="btn btn-large btn-light">Browse Chefs</button>
+            <Link to="/chefs" className="btn btn-large btn-light">Browse Chefs</Link>
             <Link to={becomeChefLink} className="btn btn-large btn-outline-light">Become a Chef</Link>
           </div>
         </div>
       </header>
+
+      <FeaturedMeals />
+      <FeaturedChefs />
 
       {/* Features Section */}
       <section id="features" className="features">
@@ -98,12 +125,65 @@ export default function HomePage() {
         <h2>Ready to Get Started?</h2>
         <p>Join our community of food lovers and talented chefs today!</p>
         <div className="cta-buttons">
-          <button type="button" className="btn btn-large btn-light">Find Chefs Near You</button>
+          <Link to="/chefs" className="btn btn-large btn-light">Find Chefs Near You</Link>
           <Link to={becomeChefLink} className="btn btn-large btn-outline-light">Become a Chef</Link>
         </div>
       </section>
 
       <Footer />
     </div>
+  )
+}
+
+function FeaturedMeals() {
+  const meals = useAsyncData('home:meals', async () => {
+    const pool = await fetchMeals(FEATURED_MEAL_POOL)
+    return pickOnePerChef(pool.items, FEATURED_COUNT)
+  })
+  if (meals.status === 'error' || meals.data?.length === 0) return null
+
+  return (
+    <section className="home-section" aria-labelledby="popular-heading">
+      <div className="home-section-inner">
+        <div className="section-heading">
+          <h2 id="popular-heading">Popular right now</h2>
+          <Link to="/meals" className="text-link">See all meals &rarr;</Link>
+        </div>
+        {meals.data ? (
+          <div className="card-grid card-grid--four">
+            {meals.data.map((meal) => (
+              <MealCard key={meal.id} meal={meal} chef={meal.chef} />
+            ))}
+          </div>
+        ) : (
+          <PageLoader label="Loading meals" />
+        )}
+      </div>
+    </section>
+  )
+}
+
+function FeaturedChefs() {
+  const chefs = useAsyncData('home:chefs', () => fetchChefs(FEATURED_CHEFS))
+  if (chefs.status === 'error' || chefs.data?.items.length === 0) return null
+
+  return (
+    <section className="home-section home-section--muted" aria-labelledby="chefs-heading">
+      <div className="home-section-inner">
+        <div className="section-heading">
+          <h2 id="chefs-heading">Meet your neighborhood chefs</h2>
+          <Link to="/chefs" className="text-link">See all chefs &rarr;</Link>
+        </div>
+        {chefs.data ? (
+          <div className="card-grid card-grid--four">
+            {chefs.data.items.map((chef) => (
+              <ChefCard key={chef.id} chef={chef} />
+            ))}
+          </div>
+        ) : (
+          <PageLoader label="Loading chefs" />
+        )}
+      </div>
+    </section>
   )
 }

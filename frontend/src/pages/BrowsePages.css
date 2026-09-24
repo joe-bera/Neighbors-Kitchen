@@ -1,0 +1,165 @@
+.browse {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.browse-header h1 {
+  font-size: 2.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.browse-header p {
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+}
+
+.browse-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pill {
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.pill:hover {
+  border-color: var(--color-brand);
+}
+
+.pill:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.pill[aria-pressed='true'] {
+  background: var(--color-brand-strong);
+  border-color: var(--color-brand-strong);
+  color: white;
+}
+
+.select-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.select-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  min-width: 180px;
+}
+
+.select-field select {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font: inherit;
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+.select-field select:focus {
+  outline: none;
+  border-color: var(--color-brand);
+  box-shadow: var(--focus-ring);
+}
+
+.results-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.results-count {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.text-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-brand-strong);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.text-button:hover {
+  text-decoration: underline;
+}
+
+.results-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+  .browse-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .browse-filters {
+    padding: 1rem;
+  }
+
+  /* On phones each row of filter buttons scrolls sideways instead of wrapping onto many lines. */
+  .pill-group {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -1rem;
+    padding: 0 1rem 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .pill-group::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pill {
+    flex-shrink: 0;
+  }
+
+  .select-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .select-field {
+    min-width: 0;
+  }
+
+  .select-field:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}

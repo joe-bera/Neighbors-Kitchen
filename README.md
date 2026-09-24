@@ -9,8 +9,8 @@ The app is being built in eight phases. Each phase is tested and runnable before
 | Phase | What it adds | Status |
 |-------|--------------|--------|
 | 1. Foundation | Database connected, sample chefs and meals, sign-up and login for customers and chefs | ✅ Done |
-| 2. Customers | Browse and search chefs and meals, chef profile pages, meal pages, working landing page buttons | ⏳ Next |
-| 3. Chefs | Become a chef, chef dashboard, add and edit meals with photos, set availability | ⏳ |
+| 2. Customers | Browse and search chefs and meals, chef profile pages, meal pages, working landing page buttons | ✅ Done |
+| 3. Chefs | Become a chef, chef dashboard, add and edit meals with photos, set availability | ⏳ Next |
 | 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ⏳ |
 | 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏳ |
 | 6. Trust | Reviews, ratings and dish suggestions | ⏳ |
@@ -180,10 +180,29 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 | POST | `/api/v1/auth/refresh-token` | Get a new access token using the refresh cookie |
 | POST | `/api/v1/auth/logout` | Log out and revoke the refresh token |
 | GET | `/api/v1/users/me` | The signed-in user, with a kitchen summary for chefs |
+| GET | `/api/v1/chefs` | Browse chefs: `search`, `city`, `cuisine`, `page`, `limit` |
+| GET | `/api/v1/chefs/:id` | Chef profile with menus of meals that can be ordered |
+| GET | `/api/v1/meals` | Browse meals: `search`, `category`, `cuisine`, `dietary` (comma-separated, all must match), `maxPrice`, `chefId`, `sort` (`recommended`, `price_asc`, `price_desc`, `newest`), `page`, `limit` |
+| GET | `/api/v1/meals/filters` | Cuisines, dietary tags and cities that currently have meals |
+| GET | `/api/v1/meals/:id` | Meal details, its chef, and more meals from the same chef |
 | GET | `/health` | Health check |
 
+List endpoints return `pagination: { page, limit, total, totalPages }`. Public responses never include a chef's street address, exact location or contact details.
+
 ### Coming in later phases
-Chefs, meals, orders, reviews, suggestions and payments endpoints (see CLAUDE.md for the planned design).
+Chef dashboard, orders, payments, reviews and suggestions endpoints (see CLAUDE.md for the planned design).
+
+## Website pages
+
+| Page | Address |
+|------|---------|
+| Home, with search and featured dishes and chefs | `/` |
+| Browse and filter meals | `/meals` |
+| Meal details | `/meals/:id` |
+| Browse chefs | `/chefs` |
+| Chef profile and menu | `/chefs/:id` |
+| Sign up / Log in | `/signup`, `/login` |
+| My account | `/account` |
 
 ## Environment Variables
 

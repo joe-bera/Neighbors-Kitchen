@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import PageLoader from '../components/common/PageLoader'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { fetchCurrentUser } from '../services/authService'
@@ -111,9 +111,13 @@ export default function AccountPage() {
           <section className="card" aria-labelledby="next-meal-heading">
             <h2 id="next-meal-heading">Find your next meal</h2>
             <p className="card-text">
-              Browsing chefs and meals near you is coming soon. You will be able to pre-order
-              for pickup or delivery right from here.
+              See what the chefs near you are cooking this week. Pre-ordering for pickup or
+              delivery is coming soon.
             </p>
+            <div className="card-actions">
+              <Link to="/meals" className="btn btn-primary">Browse meals</Link>
+              <Link to="/chefs" className="btn btn-outline">Meet the chefs</Link>
+            </div>
           </section>
         )}
       </div>

@@ -56,8 +56,13 @@
   color: var(--color-text-muted);
 }
 
-.navbar--solid .nav-link:hover {
+.navbar--solid .nav-link:hover,
+.navbar--solid .nav-link.active {
   color: var(--color-brand-strong);
+}
+
+.navbar--solid .nav-link.active {
+  font-weight: 700;
 }
 
 @media (max-width: 768px) {
@@ -83,8 +88,13 @@
   }
 }
 
-@media (max-width: 420px) {
-  .logo-text {
+@media (max-width: 480px) {
+  .logo-text,
+  .nav-login-link {
     display: none;
+  }
+
+  .nav-links {
+    gap: 0.75rem;
   }
 }

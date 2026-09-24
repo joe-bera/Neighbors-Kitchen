@@ -8,7 +8,7 @@
 The app is built in eight phases, each tested and runnable before the next starts. The status table lives in README.md ("Project Status"); keep it current.
 
 1. Foundation: database, sample chefs and meals, sign-up and login (done)
-2. Customers: browse and search chefs and meals, chef and meal pages, working landing page buttons
+2. Customers: browse and search chefs and meals, chef and meal pages, working landing page buttons (done)
 3. Chefs: become a chef, chef dashboard, add/edit meals with photos, availability
 4. Ordering: cart, pre-orders with pickup or delivery times, order tracking
 5. Payments: Stripe test mode, platform fee, chef payouts
@@ -62,6 +62,9 @@ Key conventions already in place:
 - Validate request bodies with `validateBody(zodSchema)`; protect routes with `requireAuth` / `requireRole(...)`.
 - Auth: 15-minute JWT access token (in memory on the client) + 7-day refresh token in an httpOnly cookie (`nk_refresh`, path `/api/v1/auth`), stored hashed in `refresh_tokens`.
 - Frontend calls the API through `frontend/src/services/api.ts`, which attaches the token and refreshes it once on `TOKEN_EXPIRED`.
+- Public catalog visibility lives in `backend/src/services/catalogShared.ts`: a meal is orderable only if it is available, on an active menu, from an active chef account. Reuse `orderableMealWhere` / `visibleChefWhere` instead of re-writing the conditions, and never add address, lat/long, email or phone to public responses (`tests/chefs.test.ts` checks this).
+- Prisma `Decimal` fields (prices, ratings) must be converted with `.toNumber()` before sending JSON.
+- Frontend data loading uses `useAsyncData(key, loader)`; list pages keep filters in the URL (`useSearchParams` + `withUpdatedParams`).
 
 ### Recommended Structure
 For a full-stack marketplace application, we recommend this structure:

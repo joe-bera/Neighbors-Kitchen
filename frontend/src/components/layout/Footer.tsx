@@ -12,9 +12,10 @@ export default function Footer() {
         <div className="footer-section">
           <h4>For Customers</h4>
           <ul>
+            <li><Link to="/meals">Browse meals</Link></li>
+            <li><Link to="/chefs">Browse chefs</Link></li>
             <li><Link to="/#how-it-works">How It Works</Link></li>
             <li><Link to="/signup">Create an account</Link></li>
-            <li><Link to="/login">Log in</Link></li>
           </ul>
         </div>
         <div className="footer-section">

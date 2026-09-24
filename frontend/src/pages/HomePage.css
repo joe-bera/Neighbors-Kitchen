@@ -39,10 +39,25 @@
   justify-content: center;
 }
 
+/* Real dishes and chefs from the catalog */
+.home-section {
+  padding: 5rem 5%;
+  background: white;
+}
+
+.home-section--muted {
+  background: var(--color-surface-muted);
+}
+
+.home-section-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 /* Features Section */
 .features {
   padding: 6rem 5%;
-  background: var(--color-surface-muted);
+  background: white;
 }
 
 .features h2,
@@ -62,7 +77,7 @@
 }
 
 .feature-card {
-  background: white;
+  background: var(--color-surface-muted);
   padding: 2.5rem;
   border-radius: var(--radius);
   text-align: center;
@@ -96,7 +111,7 @@
 /* How It Works Section */
 .how-it-works {
   padding: 6rem 5%;
-  background: white;
+  background: var(--color-surface-muted);
 }
 
 .steps {

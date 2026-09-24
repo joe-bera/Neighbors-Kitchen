@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { logout } from '../../services/authService'
 import { useAuthStore } from '../../store/authStore'
 import './Navbar.css'
@@ -26,16 +26,13 @@ export default function Navbar({ variant = 'solid' }: NavbarProps) {
       </Link>
 
       <div className="nav-links">
-        {onHero && (
-          <>
-            <a href="#features" className="nav-link nav-section-link">Features</a>
-            <a href="#how-it-works" className="nav-link nav-section-link">How It Works</a>
-          </>
-        )}
+        <NavLink to="/meals" className="nav-link">Meals</NavLink>
+        <NavLink to="/chefs" className="nav-link">Chefs</NavLink>
+        {onHero && <a href="#how-it-works" className="nav-link nav-section-link">How It Works</a>}
 
         {status === 'anonymous' && (
           <>
-            <Link to="/login" className="nav-link">Log in</Link>
+            <Link to="/login" className="nav-link nav-login-link">Log in</Link>
             <Link to="/signup" className={`btn btn-small ${onHero ? 'btn-light' : 'btn-primary'}`}>
               Get Started
             </Link>
