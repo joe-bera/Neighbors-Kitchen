@@ -1,0 +1,71 @@
+.near-me {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.near-me-title {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.near-me-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.near-me-input {
+  flex: 0 1 9rem;
+  min-width: 7rem;
+}
+
+.near-me--hero {
+  justify-items: center;
+  margin-top: 1.25rem;
+}
+
+.near-me--hero .near-me-title {
+  color: #fff;
+}
+
+.near-me--hero .near-me-row {
+  justify-content: center;
+}
+
+.near-me--hero .near-me-error {
+  color: #fff;
+  background: rgba(197, 48, 48, 0.9);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+}
+
+/* Maps. isolation keeps Leaflet's own layers from sliding over the page header. */
+.map-frame {
+  height: 260px;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  isolation: isolate;
+  background: var(--color-surface-muted);
+}
+
+.map-frame--large {
+  height: min(65vh, 520px);
+}
+
+.map-note {
+  margin-top: 0.5rem;
+  color: var(--color-text-subtle);
+  font-size: 0.875rem;
+}
+
+.leaflet-popup-content .map-popup-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.leaflet-popup-content .map-popup-meta {
+  margin: 0;
+  color: var(--color-text-muted);
+}
