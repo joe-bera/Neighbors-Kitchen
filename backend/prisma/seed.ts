@@ -11,6 +11,8 @@
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import { MealCategory, OrderStatus, Prisma, PrismaClient, SuggestionStatus, UserRole } from '@prisma/client';
+import { approximateLocation, seededRandom } from '../src/services/geo.js';
+import { zipCentroid } from '../src/services/zipCodes.js';
 
 const prisma = new PrismaClient();
 
@@ -753,7 +755,16 @@ async function upsertUser(
 async function seedChef(chef: SeedChef, passwordHash: string) {
   const { meals, menuName, menuDescription, email, firstName, lastName, ...details } = chef;
   const { availability, ...handover } = fulfillment[email];
-  const profile = { ...details, ...handover, offersPickup: true, isAcceptingOrders: true };
+  // The public area center is picked from the chef's email, so reseeding keeps the same circle on the map.
+  const area = approximateLocation({ latitude: details.latitude, longitude: details.longitude }, seededRandom(email));
+  const profile = {
+    ...details,
+    ...handover,
+    approxLatitude: area.latitude,
+    approxLongitude: area.longitude,
+    offersPickup: true,
+    isAcceptingOrders: true,
+  };
   const user = await upsertUser({ email, firstName, lastName }, 'CHEF', passwordHash);
 
   const chefProfile = await prisma.chefProfile.upsert({
@@ -911,6 +922,29 @@ async function refreshStats() {
   }
 }
 
+/** Puts kitchens made outside the seed (for example while trying the app) on the map, without calling the geocoder. */
+async function fillMissingAreas() {
+  const chefs = await prisma.chefProfile.findMany({
+    where: { OR: [{ approxLatitude: null }, { approxLongitude: null }] },
+    select: { id: true, latitude: true, longitude: true, zipCode: true },
+  });
+  let placed = 0;
+  for (const chef of chefs) {
+    const exact =
+      chef.latitude && chef.longitude
+        ? { latitude: chef.latitude.toNumber(), longitude: chef.longitude.toNumber() }
+        : zipCentroid(chef.zipCode);
+    if (!exact) continue;
+    const area = approximateLocation(exact, seededRandom(chef.id));
+    await prisma.chefProfile.update({
+      where: { id: chef.id },
+      data: { ...exact, approxLatitude: area.latitude, approxLongitude: area.longitude },
+    });
+    placed += 1;
+  }
+  return placed;
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
@@ -922,6 +956,7 @@ async function main() {
   for (const chef of chefs) {
     mealCount += await seedChef(chef, passwordHash);
   }
+  const otherKitchens = await fillMissingAreas();
 
   let reviewCount = 0;
   for (const [index, entry] of pastOrders.entries()) {
@@ -934,6 +969,7 @@ async function main() {
 
   console.log(`Seeded ${chefs.length} chefs, ${mealCount} meals and ${customers.length} customers.`);
   console.log(`Added ${pastOrders.length} past orders, ${reviewCount} reviews and ${suggestions.length} dish requests.`);
+  console.log(`Placed ${otherKitchens} other kitchens on the map.`);
   console.log(`Demo logins (password for all: ${DEMO_PASSWORD}):`);
   console.log(`  Customer: ${customers[0].email}`);
   console.log(`  Chef:     ${chefs[0].email} (and kenji@, aisha@, tony@, grace@, priya@, linh@, sofia@)`);
