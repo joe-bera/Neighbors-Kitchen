@@ -20,9 +20,10 @@
   min-width: 7rem;
 }
 
+/* Same rhythm as the meal search above it: the gap sits below the form. */
 .near-me--hero {
   justify-items: center;
-  margin-top: 1.25rem;
+  margin-bottom: 2rem;
 }
 
 .near-me--hero .near-me-title {

@@ -14,7 +14,7 @@ The app is being built in eight phases. Each phase is tested and runnable before
 | 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ✅ Done |
 | 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏸ Waiting for Stripe test keys |
 | 6. Trust | Reviews, ratings and dish suggestions | ✅ Done |
-| 7. Local | Find chefs near you on a map, email notifications | ⏳ Next |
+| 7. Local | Find chefs near you on a map, email notifications | 🚧 Map done, emails next |
 | 8. Launch | Put it live on the internet | ⏳ |
 
 Phase 6 was built before Phase 5, which is waiting for a Stripe account.
@@ -56,7 +56,7 @@ Phase 6 was built before Phase 5, which is waiting for a Stripe account.
 - Stripe (payment processing)
 - Cloudinary or similar (image storage in production)
 - Email service (notifications)
-- Maps (location features)
+- A map tile provider for production traffic (OpenStreetMap's free tiles are meant for light use)
 
 ## Project Structure
 
@@ -65,7 +65,7 @@ Neighbors-Kitchen/
 ├── package.json          # One-command scripts: npm run setup, npm run dev, npm test
 ├── frontend/             # React app (http://localhost:3000)
 │   └── src/
-│       ├── components/   # layout/, auth/, common/, meal/, chef/, cart/, order/, feedback/
+│       ├── components/   # layout/, auth/, common/, meal/, chef/, cart/, order/, feedback/, location/
 │       ├── pages/        # customer pages; pages/chef/ holds the chef dashboard
 │       ├── services/     # API client (api.ts) and one service file per area
 │       ├── store/        # Zustand stores (authStore)
@@ -78,7 +78,8 @@ Neighbors-Kitchen/
 │   │   ├── config/       # Validated environment settings
 │   │   ├── controllers/, routes/, services/, middleware/, validators/
 │   ├── prisma/           # schema.prisma, migrations/, seed.ts (sample data)
-│   ├── scripts/          # db.mjs (local Postgres), ensure-env.mjs
+│   ├── data/             # zip-centroids.csv (ZIP code locations, US Census Bureau)
+│   ├── scripts/          # db.mjs (local Postgres), ensure-env.mjs, build-zip-centroids.mjs
 │   └── tests/            # API tests
 │
 └── CLAUDE.md             # AI assistant guide
@@ -188,8 +189,9 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 | POST | `/api/v1/auth/refresh-token` | Get a new access token using the refresh cookie |
 | POST | `/api/v1/auth/logout` | Log out and revoke the refresh token |
 | GET | `/api/v1/users/me` | The signed-in user, with a kitchen summary for chefs |
-| GET | `/api/v1/chefs` | Browse chefs: `search`, `city`, `cuisine`, `page`, `limit` |
-| GET | `/api/v1/chefs/:id` | Chef profile with menus of meals that can be ordered |
+| GET | `/api/v1/chefs` | Browse chefs: `search`, `city`, `cuisine`, `page`, `limit`. Add `near=92373` (a ZIP code) or `lat` + `lng` (the browser's location) to list chefs nearest first, each with `distanceMiles`, and `maxDistance` to limit the miles |
+| GET | `/api/v1/chefs/map` | Every matching chef's approximate area for the map (same filters, no pages), plus where the search starts |
+| GET | `/api/v1/chefs/:id` | Chef profile with menus of meals that can be ordered, and the approximate `area` where they cook |
 | GET | `/api/v1/meals` | Browse meals: `search`, `category`, `cuisine`, `dietary` (comma-separated, all must match), `maxPrice`, `chefId`, `sort` (`recommended`, `price_asc`, `price_desc`, `newest`), `page`, `limit` |
 | GET | `/api/v1/meals/filters` | Cuisines, dietary tags and cities that currently have meals |
 | GET | `/api/v1/meals/:id` | Meal details, its chef, and more meals from the same chef |
@@ -200,7 +202,7 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 | PUT / DELETE | `/api/v1/chefs/me/meals/:id` | Edit, hide/show or delete a meal (meals with orders cannot be deleted) |
 | POST | `/api/v1/uploads/meal-photo` | Upload a meal photo (JPG/PNG/WebP, max 5 MB); saved as a resized WebP without location data |
 | GET | `/api/v1/chefs/:id/order-slots` | Pre-order times: every 30 minutes inside the chef's hours, after their lead time, up to 2 weeks ahead |
-| POST | `/api/v1/orders` | Place a pre-order (prices come from the menu; checks hours, lead time, daily limits and delivery) |
+| POST | `/api/v1/orders` | Place a pre-order (prices come from the menu; checks hours, lead time, daily limits, and that delivery addresses are within the chef's delivery distance) |
 | GET | `/api/v1/orders`, `/api/v1/orders/:id` | The customer's orders; the chef's pickup address is shown once the chef confirms |
 | POST | `/api/v1/orders/:id/cancel` | Customer cancels (allowed until the chef starts cooking) |
 | GET | `/api/v1/chefs/me/orders?view=active\|past` | Orders received by the signed-in chef, with payout after the platform fee |
@@ -221,7 +223,7 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 List endpoints return `pagination: { page, limit, total, totalPages }`. Public responses never include a chef's street address, exact location or contact details.
 
 ### Coming in later phases
-Payments (Phase 5) and the map and email notifications (Phase 7).
+Payments (Phase 5) and email notifications (Phase 7).
 
 ## Website pages
 
@@ -231,6 +233,7 @@ Payments (Phase 5) and the map and email notifications (Phase 7).
 | Browse and filter meals | `/meals` |
 | Meal details | `/meals/:id` |
 | Browse chefs | `/chefs` |
+| Chefs near a ZIP code, as a list or a map | `/chefs?near=92373`, `/chefs?near=92373&view=map` |
 | Chef profile and menu | `/chefs/:id` |
 | Sign up / Log in | `/signup`, `/login` |
 | My account | `/account` |
@@ -246,6 +249,8 @@ Payments (Phase 5) and the map and email notifications (Phase 7).
 
 **How reviews and dish requests work (Phase 6):** once an order is completed, the customer's order page shows "Rate your meals" (stars plus an optional comment, one review per meal). Only real orders can be reviewed, so every review is a verified purchase. Ratings on chef and meal pages update right away. Chefs reply publicly from the Feedback tab of their dashboard, and anyone signed in can report a review. On a chef's page, neighbors can request a dish and vote "I want this too"; the chef answers each request (thinking about it, yes, or not for my kitchen) with an optional message shown on their page.
 
+**How location works (Phase 7):** a kitchen is placed on the map from its street address when the chef saves it (US Census Bureau geocoder, free), or from its ZIP code if the street is not found. Neighbors only ever see an approximate area: a circle about a mile across that contains the kitchen but is not centered on it, and every distance is measured to that circle. Customers search from a ZIP code or their browser's location (rounded to about half a mile and never stored). Delivery orders from farther than the chef delivers are turned down at checkout; if an address cannot be found at all, the order goes through and the chef can decline it. Map tiles © OpenStreetMap contributors. ZIP code locations come from the US Census Bureau Gazetteer (public domain) in `backend/data/zip-centroids.csv`; rebuild it with `node scripts/build-zip-centroids.mjs` (see the script for the download link).
+
 Uploaded photos are stored in `backend/uploads/` during development (not committed to git). Production photo storage is set up in Phase 8.
 
 ## Environment Variables
@@ -256,6 +261,7 @@ Created automatically by `npm run setup` from `.env.example`. Key settings:
 - `JWT_SECRET` - Secret for signing access tokens (a random one is generated for you)
 - `PORT` - API port (default 4000)
 - `FRONTEND_URL` - Website URL allowed by CORS
+- `GEOCODER` - `census` (default: the free US Census Bureau address lookup, no key needed) or `off`
 
 ### Frontend (`frontend/.env`, optional)
 - `VITE_API_URL` - Leave empty in development; Vite forwards `/api` to the backend

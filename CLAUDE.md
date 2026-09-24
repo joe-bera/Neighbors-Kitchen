@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide for Neighbors-Kitchen
 
 > **Last Updated:** 2026-09-24
-> **Repository Status:** Phases 1-4 and 6 complete; Phase 5 waits for Stripe test keys (see "Build Plan" below)
+> **Repository Status:** Phases 1-4 and 6 complete, Phase 7 map done (emails next); Phase 5 waits for Stripe test keys (see "Build Plan" below)
 
 ## Build Plan
 
@@ -13,7 +13,7 @@ The app is built in eight phases, each tested and runnable before the next start
 4. Ordering: cart, pre-orders with pickup or delivery times, order tracking (done)
 5. Payments: Stripe test mode, platform fee, chef payouts (waiting for the owner's Stripe test keys and Connect)
 6. Reviews, ratings and dish suggestions (done)
-7. Map of nearby chefs, email notifications
+7. Map of nearby chefs (done), email notifications
 8. Put it live on the internet
 
 After each phase: run the full test suites, run the app and click through the new flows, update README, commit and push. Ask the project owner before signing up for, or paying for, any outside service, and say exactly which account or key is needed.
@@ -46,11 +46,12 @@ After each phase: run the full test suites, run the app and click through the ne
 Neighbors-Kitchen/
 ├── package.json        # root scripts: setup, dev, test, build, db:start/stop/seed
 ├── frontend/           # React 19 + Vite, port 3000 (proxies /api to 4000)
-│   └── src/            # components/{layout,auth,common,meal,chef,cart,order,feedback}, pages/ (pages/chef = dashboard), services/, store/, hooks/, types/, utils/
+│   └── src/            # components/{layout,auth,common,meal,chef,cart,order,feedback,location}, pages/ (pages/chef = dashboard), services/, store/, hooks/, types/, utils/
 ├── backend/            # Express 5 + Prisma, port 4000
 │   ├── src/            # app.ts, index.ts, config/, controllers/, routes/, services/, middleware/, validators/, lib/, utils/, types/
 │   ├── prisma/         # schema.prisma, migrations/ (committed), seed.ts
-│   ├── scripts/        # db.mjs (local Postgres), ensure-env.mjs
+│   ├── data/           # zip-centroids.csv (Census ZIP code locations, committed)
+│   ├── scripts/        # db.mjs (local Postgres), ensure-env.mjs, build-zip-centroids.mjs
 │   └── tests/          # Vitest + Supertest API tests
 └── .claude/launch.json # preview config: `npm run dev` on port 3000
 ```
@@ -75,6 +76,7 @@ Key conventions already in place:
 - Reviews (`services/reviewService.ts`): one per meal per completed order (unique `order_id + meal_id`), so every review is a verified purchase. After any review change, call `refreshRatings(tx, mealId, chefId)` in the same transaction; it rewrites `average_rating` / `total_reviews` on the meal and the chef. Public reviews show the customer as "First L." only.
 - Dish requests (`services/suggestionService.ts`): `suggestions.votes` is a cached count kept in step with `suggestion_votes` rows (the requester's own vote is created with the request). Declined requests are hidden from the public page; chefs cannot request or vote on their own kitchen.
 - `optionalAuth` reads the user when an `Authorization` header is sent and lets anonymous visitors through; use it for public endpoints that personalise a little (e.g. "you voted"). On the frontend, `useOwnKitchenId()` tells a chef's page that the viewer owns it.
+- Location (`services/geo.ts`, `zipCodes.ts`, `geocoding.ts`, `locationService.ts`): `chef_profiles.latitude/longitude` are exact and private; `approx_latitude/approx_longitude` are the public area center (moved 0.1-0.3 mi, re-picked only when the street, city, state or ZIP changes). Every public distance, the distance filter and the delivery check are measured from the area center with `distanceMiles` and rounded with `roundToTenth`; `toArea()` is the only public shape. The Census geocoder is called only when a chef saves an address or a customer places a delivery order, never from public endpoints; it retries once without the dash for house numbers like "73-510". Tests run with `GEOCODER=off` and mock `services/geocoding.js`. ZIP lookups use the committed `backend/data/zip-centroids.csv`. Map components (`components/location/ChefsMap`, `AreaMap`) are only imported with `React.lazy`.
 
 ### Recommended Structure
 For a full-stack marketplace application, we recommend this structure:
