@@ -8,7 +8,7 @@ Phase 7 is split in two: 7a (this document, the map and distances) and 7b (email
 - Customers type a ZIP code or tap "Use my location" on the Chefs page (or the new box on the home page). Chefs are listed nearest first with "2.1 miles away", and can be filtered to 5, 10, 25 or 50 miles, or any distance.
 - A **Map** button on the Chefs page shows every matching chef as a shaded circle. Each chef's page has a small "Where Maria cooks" map.
 - Chefs never have their exact address shown. The circle is about 1 mile across and their home is inside it, never at the center.
-- Chefs set **Deliver up to ___ miles** on their Hours & delivery page. Delivery orders from farther away are blocked at checkout, with a suggestion to choose pickup. If an address cannot be found on the map, the order still goes through and the chef can decline it.
+- Chefs already choose how far they serve on their Kitchen profile. That setting is relabeled **How far will you deliver?** and now blocks delivery orders from farther away at checkout, with a suggestion to choose pickup. If an address cannot be found on the map, the order still goes through and the chef can decline it. (Correction, 2026-09-24: the design discussed in chat said chefs could not change this yet; they can, so no new setting is added.)
 - Chefs see roughly how far away each delivery customer is.
 
 ## Decisions (owner, 2026-09-24)
@@ -42,12 +42,13 @@ New modules in `backend/src/services/`:
 
 - `geo.ts` (pure functions): `distanceMiles(a, b)` (haversine, Earth radius 3958.8 mi), `approximateLocation(exact, random = Math.random)`, `AREA_RADIUS_MILES`, `roundToTenth(miles)`.
 - `zipCodes.ts`: `zipCentroid(zip)` returns `{ latitude, longitude } | null`; accepts `92373` or `92373-1234`. Reads `backend/data/zip-centroids.csv` once, on first use. The CSV (`zip,latitude,longitude`, about 34,000 rows) is committed and built by `backend/scripts/build-zip-centroids.mjs` from the Gazetteer text file.
-- `geocoding.ts`: `geocodeAddress(oneLineAddress)` calls `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress` (`benchmark=Public_AR_Current`, `format=json`) with a 6-second timeout and returns the first match, or `null` when there is no match, the service fails, or times out (logged with `console.warn`). `locateAddress({ addressLine1, city, state, zipCode })` tries the street address and falls back to the ZIP centroid. A new setting `GEOCODER` (`census` default, `off`) turns network lookups off; the test environment uses `off`, and tests that need a result mock the module.
+- `geocoding.ts`: `geocodeAddress(oneLineAddress)` calls `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress` (`benchmark=Public_AR_Current`, `format=json`) with a 6-second timeout and returns the first match, or `null` when there is no match, the service fails, or times out (logged with `console.warn`). A new setting `GEOCODER` (`census` default, `off`) turns network lookups off; the test environment uses `off`, and tests that need a result mock this module.
+- `locationService.ts`: `locateKitchen({ addressLine1, city, state, zipCode })` tries the street address and falls back to the ZIP centroid, then picks the area center; `resolveOrigin(query)` turns `near` or `lat`/`lng` into a search point; `toArea(chef)` shapes the public `area`. Kept apart from `geocoding.ts` so tests can mock the network lookup alone.
 
 Changes:
 
 - **Kitchen setup and edits** (`kitchenService.ts`): `becomeChef` locates the address before saving and stores exact plus area coordinates (all `null` if even the ZIP is unknown). `updateOwnKitchen` locates again only when `addressLine1`, `city`, `state` or `zipCode` actually changes. The chef's own kitchen response adds `area`.
-- **Delivery distance setting**: `availabilitySchema` accepts an optional `serviceRadiusMiles` (1 to 50). It already exists on the profile and in kitchen setup, but no page lets chefs change it.
+- **Delivery distance setting**: unchanged in the API. `serviceRadiusMiles` (1 to 50) is already set through kitchen setup and `PUT /chefs/me`.
 - **Public chef data** (`chefService.ts`):
   - `GET /api/v1/chefs` accepts `near` (5-digit ZIP) or `lat` + `lng`, and `maxDistance` (1 to 100 miles; no limit when absent). With a location, only chefs that have an area are included, sorted nearest first (ties in id order). Pagination still applies: matching chefs' area centers are loaded, distances computed in code, the page of ids sliced, then the cards for that page loaded. Every card gets `distanceMiles` (a number rounded to 0.1, or `null` without a location). `maxDistance` is ignored without a location. An unknown ZIP returns 422 `UNKNOWN_ZIP`; `lat` without `lng` (or the reverse), or `near` together with `lat`/`lng`, returns 422.
   - New `GET /api/v1/chefs/map` (registered before `/chefs/:id`): same filters, no pagination, at most 500 chefs. Returns `{ origin, chefs }`, where `origin` is the search point (or `null`) and each chef has `id, kitchenName, chefName, city, averageRating, totalReviews, isAcceptingOrders, distanceMiles, area`.
@@ -65,8 +66,9 @@ Changes:
 - **Chefs page**: NearMeForm above the filters; a distance filter once a location is set (default 25 miles when starting from a ZIP or location); a heading like "8 chefs near 92373"; List/Map toggle (`view=map`). Cards show the distance.
 - **Home page**: a "Find chefs near you" ZIP box that opens `/chefs?near=ZIP&maxDistance=25`.
 - **Chef page**: a "Where Maria cooks" card with AreaMap, "Shown as an area for privacy. The pickup address is shared after Maria confirms your order." and, for delivery, "Delivers up to 8 miles".
+- **Kitchen setup and Kitchen profile form** (`KitchenProfileForm`): "How far will you serve?" becomes "How far will you deliver?" with the hint "Delivery orders from farther away are turned down automatically." The privacy note under the address becomes "Your street address stays private. Neighbors see an approximate area about a mile across, and pickup details are shared after an order is confirmed."
 - **Chef dashboard, Kitchen profile**: "How neighbors see your location" with AreaMap, or a note if the address could not be placed.
-- **Chef dashboard, Hours & delivery**: "Deliver up to ___ miles", shown when delivery is on.
+- **Chef dashboard, Hours & delivery**: the delivery checkbox keeps "I deliver (within N miles)" and adds a link to the Kitchen profile to change the distance.
 - **Chef dashboard, Orders**: delivery orders show "about 3.2 miles away" when known.
 - **Checkout**: no change needed. It already shows "within N miles of City" and displays `details.deliveryAddress` errors under the address field.
 
@@ -77,12 +79,12 @@ Backend (Vitest + Supertest, real test database, geocoder mocked with `vi.mock`)
 - `zipCodes.test.ts`: known ZIP, ZIP+4, unknown ZIP.
 - `geocoding.test.ts` (stubbed `fetch`): match, no match, HTTP error, timeout, `GEOCODER=off` never calls fetch, ZIP fallback.
 - `location.test.ts`: near-ZIP sorting and distances, `maxDistance`, `lat`/`lng`, unknown ZIP, half coordinates, chefs without an area left out of near searches but still in normal lists, `/chefs/map` shape, `area` on `/chefs/:id`, and privacy: no exact coordinates anywhere, and the area center stays within 0.3 miles of the exact position.
-- Kitchen: setup stores coordinates, ZIP fallback, the address change locates again, other edits do not call the geocoder, availability saves `serviceRadiusMiles`.
+- Kitchen: setup stores coordinates, ZIP fallback, the address change locates again, other edits do not call the geocoder.
 - Orders: too far returns 409 with details; in range saves and returns the distance to the chef; unknown address is allowed with no distance; pickup never geocodes.
 
 Frontend (Vitest): `utils/location` helpers; NearMeForm (jsdom: ZIP submit, invalid ZIP, geolocation success rounds coordinates, geolocation failure message); ChefCard distance line. Maps are checked in the browser.
 
-Browser walkthrough: Chefs near 92373 (sorted, distances, filter), Map view (circles and popups), chef page map, Maria's Hours & delivery distance, checkout blocked for a far address and allowed for a near one, Kitchen profile map, phone width.
+Browser walkthrough: Chefs near 92373 (sorted, distances, filter), Map view (circles and popups), chef page map, Maria's delivery distance on her Kitchen profile, checkout blocked for a far address and allowed for a near one, Kitchen profile map, phone width.
 
 ## Out of scope and later
 
