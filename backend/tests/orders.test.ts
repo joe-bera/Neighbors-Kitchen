@@ -3,69 +3,20 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { prisma } from '../src/lib/prisma.js';
-import { API, bearer, signUp, signUpChefWithKitchen } from './helpers.js';
+import {
+  addMeal,
+  API,
+  bearer,
+  daysFromNowAt,
+  LA,
+  openKitchen,
+  pickupOrder,
+  placeOrder,
+  setOrderStatus as setStatus,
+  signUp,
+} from './helpers.js';
 
 const app = createApp();
-const LA = 'America/Los_Angeles';
-
-/** A half-hour mark N days from now, in Los Angeles time, as a UTC ISO string. */
-function daysFromNowAt(days: number, hour: number) {
-  return DateTime.now().setZone(LA).plus({ days }).set({ hour, minute: 0, second: 0, millisecond: 0 }).toUTC().toISO()!;
-}
-
-const everyDay = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, startTime: '08:00', endTime: '21:00' }));
-
-async function openKitchen(options: { offersDelivery?: boolean; deliveryFee?: number; leadHours?: number } = {}) {
-  const chef = await signUpChefWithKitchen(app);
-  await request(app)
-    .put(`${API}/chefs/me/availability`)
-    .set(bearer(chef.accessToken))
-    .send({
-      schedule: everyDay,
-      orderLeadTimeHours: options.leadHours ?? 1,
-      offersPickup: true,
-      offersDelivery: options.offersDelivery ?? false,
-      deliveryFee: options.deliveryFee ?? 0,
-    });
-  const mealId = await addMeal(chef.accessToken);
-  return { ...chef, mealId };
-}
-
-async function addMeal(accessToken: string, overrides: Record<string, unknown> = {}) {
-  const res = await request(app)
-    .post(`${API}/chefs/me/meals`)
-    .set(bearer(accessToken))
-    .send({
-      name: 'Tamales',
-      description: 'Corn masa tamales with rajas and cheese.',
-      price: 13.5,
-      category: 'DINNER',
-      servings: 2,
-      prepTimeMinutes: 60,
-      ...overrides,
-    });
-  return res.body.data.meal.id as string;
-}
-
-type Kitchen = Awaited<ReturnType<typeof openKitchen>>;
-
-function pickupOrder(kitchen: Kitchen, overrides: Record<string, unknown> = {}) {
-  return {
-    chefId: kitchen.chefId,
-    items: [{ mealId: kitchen.mealId, quantity: 2 }],
-    pickupOrDelivery: 'PICKUP',
-    scheduledFor: daysFromNowAt(1, 18),
-    ...overrides,
-  };
-}
-
-function placeOrder(accessToken: string, body: Record<string, unknown>) {
-  return request(app).post(`${API}/orders`).set(bearer(accessToken)).send(body);
-}
-
-function setStatus(kitchen: Kitchen, orderId: string, status: string) {
-  return request(app).post(`${API}/chefs/me/orders/${orderId}/status`).set(bearer(kitchen.accessToken)).send({ status });
-}
 
 describe('POST /orders', () => {
   it('places a pickup pre-order priced from the menu, ignoring prices sent by the browser', async () => {

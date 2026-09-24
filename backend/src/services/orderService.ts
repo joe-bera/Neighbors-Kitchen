@@ -6,6 +6,7 @@ import { AppError } from '../utils/errors.js';
 import { PlaceOrderInput } from '../validators/orderSchemas.js';
 import { chefDisplayName, chefSummarySelect, orderableMealOwnWhere, toChefSummary, visibleChefWhere } from './catalogShared.js';
 import { requireOwnKitchen } from './kitchenService.js';
+import { orderReviewSelect } from './reviewService.js';
 import { isOrderSlot, localDayBounds } from './scheduling.js';
 
 // Order lifecycle: PENDING -> CONFIRMED -> PREPARING -> READY -> COMPLETED, or CANCELLED along the way.
@@ -51,6 +52,7 @@ const orderInclude = {
     },
   },
   customer: { select: { firstName: true, lastName: true } },
+  reviews: { orderBy: { createdAt: 'asc' }, select: orderReviewSelect },
 } satisfies Prisma.OrderInclude;
 
 type OrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
@@ -101,6 +103,9 @@ function customerView(order: OrderRow) {
     ...sharedView(order),
     pickupAddress: sharePickupAddress ? formatAddress(order.chef) : null,
     canCancel: CUSTOMER_CANCELLABLE.includes(order.status),
+    // Each meal of a completed order can be rated once.
+    canReview: order.status === 'COMPLETED',
+    reviews: order.reviews,
   };
 }
 

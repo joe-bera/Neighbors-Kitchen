@@ -81,6 +81,7 @@ model User {
   ordersAsCustomer        Order[]      @relation("CustomerOrders")
   reviews                 Review[]
   suggestions             Suggestion[]
+  suggestionVotes         SuggestionVote[]
   refreshTokens           RefreshToken[]
 
   @@map("users")
@@ -246,7 +247,7 @@ model Order {
   orderItems          OrderItem[]
   events              OrderEvent[]
   payment             Payment?
-  review              Review?
+  reviews             Review[]
 
   @@index([customerId])
   @@index([chefId])
@@ -288,9 +289,10 @@ model OrderItem {
   @@map("order_items")
 }
 
+// One review per meal per completed order, written by the customer who ordered it.
 model Review {
   id                String    @id @default(uuid())
-  orderId           String    @unique @map("order_id")
+  orderId           String    @map("order_id")
   mealId            String    @map("meal_id")
   chefId            String    @map("chef_id")
   customerId        String    @map("customer_id")
@@ -312,6 +314,7 @@ model Review {
   chef              ChefProfile @relation(fields: [chefId], references: [id])
   customer          User        @relation(fields: [customerId], references: [id])
 
+  @@unique([orderId, mealId])
   @@index([chefId])
   @@index([mealId])
   @@map("reviews")
@@ -327,6 +330,7 @@ model Suggestion {
   status              SuggestionStatus  @default(PENDING)
   chefResponse        String?           @map("chef_response") @db.Text
   priority            Priority          @default(MEDIUM)
+  // Number of people who want this dish (kept in step with suggestion_votes)
   votes               Int               @default(1)
   createdAt           DateTime          @default(now()) @map("created_at")
   updatedAt           DateTime          @updatedAt @map("updated_at")
@@ -334,8 +338,25 @@ model Suggestion {
   // Relations
   chef                ChefProfile       @relation(fields: [chefId], references: [id])
   customer            User              @relation(fields: [customerId], references: [id])
+  voters              SuggestionVote[]
 
+  @@index([chefId])
   @@map("suggestions")
+}
+
+// One row per person who wants a suggested dish, so nobody can vote twice.
+model SuggestionVote {
+  id            String     @id @default(uuid())
+  suggestionId  String     @map("suggestion_id")
+  userId        String     @map("user_id")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  suggestion    Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([suggestionId, userId])
+  @@map("suggestion_votes")
 }
 
 model Payment {

@@ -1,4 +1,5 @@
 import type { ChefSummary } from './catalog.types'
+import type { OrderReview } from './feedback.types'
 
 export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED'
 export type Handover = 'PICKUP' | 'DELIVERY'
@@ -45,6 +46,9 @@ interface OrderBase {
 /** An order as its customer sees it. */
 export interface CustomerOrder extends OrderBase {
   pickupAddress: string | null
+  /** True once the order is completed; each meal can then be rated once. */
+  canReview: boolean
+  reviews: OrderReview[]
 }
 
 /** An order as the chef who received it sees it. */

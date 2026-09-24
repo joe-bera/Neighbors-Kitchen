@@ -14,6 +14,18 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   next();
 }
 
+/**
+ * For pages anyone can see that show a little more to signed-in people.
+ * No header means a visitor; a bad or expired token is still a 401, so the app can refresh it and retry.
+ */
+export function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.get('Authorization')) {
+    next();
+    return;
+  }
+  requireAuth(req, res, next);
+}
+
 /** Allows the request only for the given roles. Use after requireAuth. */
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction) => {

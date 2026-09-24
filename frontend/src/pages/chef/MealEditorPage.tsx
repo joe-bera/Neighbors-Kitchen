@@ -12,11 +12,10 @@ import { createMeal, fetchMyMeals, updateMeal } from '../../services/kitchenServ
 import type { MealCategory } from '../../types/catalog.types'
 import type { OwnMeal } from '../../types/kitchen.types'
 import { getApiError } from '../../utils/apiError'
-import { formatCategory, formatDietaryTag } from '../../utils/format'
+import { DIETARY_TAGS, formatCategory, formatDietaryTag } from '../../utils/format'
 import { useChefKitchen } from './chefContext'
 
 const CATEGORIES: MealCategory[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'DESSERT', 'SNACK']
-const DIETARY_TAGS = ['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'nut-free', 'contains-nuts', 'halal', 'kosher', 'spicy']
 const CUISINE_SUGGESTIONS = [
   'American', 'Asian Fusion', 'Caribbean', 'Chinese', 'Filipino', 'Greek', 'Healthy', 'Indian', 'Italian', 'Japanese',
   'Korean', 'Mediterranean', 'Mexican', 'Middle Eastern', 'Salvadoran', 'Soul Food', 'Southern', 'Thai', 'Vietnamese',

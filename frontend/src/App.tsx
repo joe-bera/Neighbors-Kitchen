@@ -7,6 +7,7 @@ import AccountPage from './pages/AccountPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
 import AvailabilityPage from './pages/chef/AvailabilityPage'
+import ChefFeedbackPage from './pages/chef/ChefFeedbackPage'
 import ChefLayout from './pages/chef/ChefLayout'
 import ChefMealsPage from './pages/chef/ChefMealsPage'
 import ChefOrdersPage from './pages/chef/ChefOrdersPage'
@@ -63,6 +64,7 @@ function App() {
             <Route path="meals" element={<ChefMealsPage />} />
             <Route path="meals/new" element={<MealEditorPage />} />
             <Route path="meals/:id/edit" element={<MealEditorPage />} />
+            <Route path="feedback" element={<ChefFeedbackPage />} />
             <Route path="availability" element={<AvailabilityPage />} />
             <Route path="kitchen" element={<KitchenSettingsPage />} />
           </Route>

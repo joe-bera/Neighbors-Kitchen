@@ -242,6 +242,11 @@ img {
   border-color: var(--color-danger);
 }
 
+.field-optional {
+  font-weight: 400;
+  color: var(--color-text-subtle);
+}
+
 .field-hint {
   font-size: 0.85rem;
   color: var(--color-text-muted);

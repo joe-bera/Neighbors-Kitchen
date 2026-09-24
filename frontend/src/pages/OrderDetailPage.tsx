@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import PageLoader from '../components/common/PageLoader'
 import { ErrorState } from '../components/common/StatusStates'
+import RateMeals from '../components/feedback/RateMeals'
 import OrderProgress from '../components/order/OrderProgress'
 import OrderStatusBadge from '../components/order/OrderStatusBadge'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -122,6 +123,8 @@ export default function OrderDetailPage() {
           </div>
         </section>
       </div>
+
+      {current.canReview && <RateMeals order={current} />}
 
       {current.canCancel && <CancelOrder orderId={current.id} onCancelled={setCancelled} />}
 

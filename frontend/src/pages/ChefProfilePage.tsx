@@ -3,9 +3,12 @@ import Avatar from '../components/common/Avatar'
 import PageLoader from '../components/common/PageLoader'
 import Rating from '../components/common/Rating'
 import { EmptyState, ErrorState } from '../components/common/StatusStates'
+import DishRequests from '../components/feedback/DishRequests'
+import ReviewsSection from '../components/feedback/ReviewsSection'
 import MealCard from '../components/meal/MealCard'
 import MealImage from '../components/meal/MealImage'
 import { useAsyncData } from '../hooks/useAsyncData'
+import { useOwnKitchenId } from '../hooks/useOwnKitchenId'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { fetchChef } from '../services/catalogService'
 import { describeHandover, formatLeadTime, summarizeAvailability } from '../utils/availability'
@@ -15,6 +18,7 @@ import './ChefProfilePage.css'
 export default function ChefProfilePage() {
   const { id = '' } = useParams()
   const chef = useAsyncData(`chef:${id}`, () => fetchChef(id))
+  const ownKitchenId = useOwnKitchenId()
   usePageTitle(chef.data ? kitchenTitle(chef.data) : 'Chef')
 
   if (chef.status === 'error') {
@@ -51,7 +55,13 @@ export default function ChefProfilePage() {
               by {profile.chefName} &middot; {profile.city}, {profile.state}
             </p>
             <div className="chef-hero-meta">
-              <Rating average={profile.averageRating} count={profile.totalReviews} />
+              {profile.totalReviews > 0 ? (
+                <a href="#reviews" className="rating-link">
+                  <Rating average={profile.averageRating} count={profile.totalReviews} />
+                </a>
+              ) : (
+                <Rating average={profile.averageRating} count={profile.totalReviews} />
+              )}
               {profile.yearsExperience !== null && <span>{profile.yearsExperience} years cooking</span>}
               <span>On Neighbors Kitchen since {memberSince}</span>
             </div>
@@ -138,6 +148,17 @@ export default function ChefProfilePage() {
           ))
         )}
       </section>
+
+      <ReviewsSection
+        key={`reviews-${profile.id}`}
+        source="chef"
+        id={profile.id}
+        kitchenName={title}
+        average={profile.averageRating}
+        count={profile.totalReviews}
+      />
+
+      <DishRequests key={`requests-${profile.id}`} chefId={profile.id} kitchenName={title} isOwnKitchen={ownKitchenId === profile.id} />
     </div>
   )
 }

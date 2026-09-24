@@ -4,6 +4,7 @@ import Avatar from '../components/common/Avatar'
 import PageLoader from '../components/common/PageLoader'
 import Rating from '../components/common/Rating'
 import { ErrorState } from '../components/common/StatusStates'
+import ReviewsSection from '../components/feedback/ReviewsSection'
 import DietaryTags from '../components/meal/DietaryTags'
 import MealCard from '../components/meal/MealCard'
 import MealImage from '../components/meal/MealImage'
@@ -87,6 +88,15 @@ export default function MealDetailPage() {
           </Link>
         </div>
       </div>
+
+      <ReviewsSection
+        key={`reviews-${detail.id}`}
+        source="meal"
+        id={detail.id}
+        kitchenName={kitchen}
+        average={detail.averageRating}
+        count={detail.totalReviews}
+      />
 
       {detail.moreFromChef.length > 0 && (
         <section className="meal-more" aria-labelledby="more-heading">

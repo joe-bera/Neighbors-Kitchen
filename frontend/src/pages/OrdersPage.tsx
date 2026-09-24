@@ -66,6 +66,9 @@ function OrderList({ title, orders, emptyText }: { title: string; orders: Custom
                 <p className="order-card-items">
                   {order.items.map((item) => `${item.quantity} × ${item.mealName}`).join(', ')}
                 </p>
+                {order.canReview && order.reviews.length < order.items.length && (
+                  <p className="order-card-review">Rate your meals &rarr;</p>
+                )}
                 <p className="order-card-footer">
                   <span>{order.orderNumber}</span>
                   <span className="order-card-total">{formatPrice(order.total)}</span>

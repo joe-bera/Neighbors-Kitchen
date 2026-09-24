@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import multer from 'multer';
+import * as feedbackController from '../controllers/feedbackController.js';
 import * as kitchenController from '../controllers/kitchenController.js';
 import * as orderController from '../controllers/orderController.js';
 import * as uploadController from '../controllers/uploadController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validateRequest.js';
 import { MAX_PHOTO_BYTES } from '../services/uploadService.js';
+import { reviewResponseSchema, suggestionUpdateSchema } from '../validators/feedbackSchemas.js';
 import { availabilitySchema, kitchenUpdateSchema } from '../validators/kitchenSchemas.js';
 import { mealCreateSchema, mealUpdateSchema } from '../validators/mealSchemas.js';
 import { cancelOrderSchema, orderStatusSchema } from '../validators/orderSchemas.js';
@@ -24,6 +26,10 @@ myKitchenRoutes.delete('/meals/:id', kitchenController.deleteMyMeal);
 myKitchenRoutes.get('/orders', orderController.listKitchenOrders);
 myKitchenRoutes.post('/orders/:id/status', validateBody(orderStatusSchema), orderController.updateKitchenOrderStatus);
 myKitchenRoutes.post('/orders/:id/cancel', validateBody(cancelOrderSchema), orderController.cancelKitchenOrder);
+myKitchenRoutes.get('/reviews', feedbackController.listMyKitchenReviews);
+myKitchenRoutes.post('/reviews/:id/response', validateBody(reviewResponseSchema), feedbackController.respondToReview);
+myKitchenRoutes.get('/suggestions', feedbackController.listMyKitchenSuggestions);
+myKitchenRoutes.put('/suggestions/:id', validateBody(suggestionUpdateSchema), feedbackController.updateMyKitchenSuggestion);
 
 // Photo uploads: /api/v1/uploads/...
 const photoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_PHOTO_BYTES, files: 1 } });

@@ -50,11 +50,6 @@
   gap: 1rem;
 }
 
-.field-optional {
-  font-weight: 400;
-  color: var(--color-text-subtle);
-}
-
 .cart-chef {
   color: var(--color-text-muted);
   margin-top: -1rem;
@@ -489,4 +484,10 @@
   .order-history-note {
     grid-column: 1;
   }
+}
+
+.order-card-review {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-brand-strong);
 }

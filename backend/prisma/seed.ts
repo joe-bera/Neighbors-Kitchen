@@ -1,4 +1,5 @@
-// Sample data for local development: demo chefs with menus, plus a demo customer.
+// Sample data for local development: demo chefs with menus, demo customers, past orders with
+// reviews, and dish requests with votes.
 // Safe to run more than once - existing demo records are updated, not duplicated.
 //
 //   npm run db:seed
@@ -9,7 +10,7 @@
 
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
-import { MealCategory, PrismaClient, UserRole } from '@prisma/client';
+import { MealCategory, OrderStatus, Prisma, PrismaClient, SuggestionStatus, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -646,6 +647,77 @@ const chefs: SeedChef[] = [
 
 const customers = [
   { email: 'customer@neighborskitchen.test', firstName: 'Chris', lastName: 'Walker' },
+  // Neighbors who have ordered, left reviews and requested dishes.
+  { email: 'dana@neighborskitchen.test', firstName: 'Dana', lastName: 'Kim' },
+  { email: 'luis@neighborskitchen.test', firstName: 'Luis', lastName: 'Ortega' },
+  { email: 'hannah@neighborskitchen.test', firstName: 'Hannah', lastName: 'Lee' },
+  { email: 'marcus@neighborskitchen.test', firstName: 'Marcus', lastName: 'Brown' },
+];
+
+const CHRIS = 'customer@neighborskitchen.test';
+const DANA = 'dana@neighborskitchen.test';
+const LUIS = 'luis@neighborskitchen.test';
+const HANNAH = 'hannah@neighborskitchen.test';
+const MARCUS = 'marcus@neighborskitchen.test';
+
+interface SeedPastOrder {
+  chef: string;
+  customer: string;
+  meal: string;
+  daysAgo: number;
+  /** Left out for an order that is completed but not reviewed yet, so the demo customer can try rating it. */
+  rating?: number;
+  comment?: string;
+  reply?: string;
+}
+
+// Completed pickup orders, one meal each, most with the customer's review.
+const pastOrders: SeedPastOrder[] = [
+  { chef: 'maria@neighborskitchen.test', customer: CHRIS, meal: 'Chicken Enchilada Casserole', daysAgo: 12, rating: 5, comment: "Tasted just like my tía's. The green chile sauce is incredible.", reply: 'Gracias, Chris! That sauce is my grandmother\'s recipe.' },
+  { chef: 'maria@neighborskitchen.test', customer: DANA, meal: 'Chicken Enchilada Casserole', daysAgo: 5, rating: 5, comment: 'Fed our family of four with leftovers for lunch. Will order again.' },
+  { chef: 'maria@neighborskitchen.test', customer: LUIS, meal: 'Churros with Chocolate Sauce', daysAgo: 9, rating: 4, comment: 'Crispy and still warm at pickup. The chocolate sauce could be a little thicker.', reply: "Thanks, Luis! I'm making the next batch richer." },
+  { chef: 'maria@neighborskitchen.test', customer: HANNAH, meal: 'Smoky Chickpea Fajitas', daysAgo: 3, rating: 5, comment: "Best vegetarian fajitas I've had. Great smoky flavor." },
+  { chef: 'kenji@neighborskitchen.test', customer: HANNAH, meal: 'Chicken Katsu Curry', daysAgo: 10, rating: 5, comment: 'Crunchy katsu and a rich, mild curry. My kids loved it.', reply: 'So happy the kids liked it!' },
+  { chef: 'kenji@neighborskitchen.test', customer: MARCUS, meal: 'Shoyu Ramen with Soft Egg', daysAgo: 6, rating: 4, comment: 'Great broth. The noodles were packed separately so they stayed perfect.' },
+  { chef: 'kenji@neighborskitchen.test', customer: DANA, meal: 'Honey Teriyaki Salmon', daysAgo: 2, rating: 5 },
+  { chef: 'kenji@neighborskitchen.test', customer: CHRIS, meal: 'Chicken Katsu Curry', daysAgo: 1 },
+  { chef: 'aisha@neighborskitchen.test', customer: LUIS, meal: 'Chicken Shawarma Plate', daysAgo: 8, rating: 5, comment: 'Generous portion, and the garlic sauce is addictive.', reply: 'The garlic sauce is the secret. Thank you, Luis!' },
+  { chef: 'aisha@neighborskitchen.test', customer: CHRIS, meal: 'Falafel Pita with Tahini', daysAgo: 4, rating: 4, comment: 'Fresh, crispy falafel. I would love extra pickles next time.' },
+  { chef: 'aisha@neighborskitchen.test', customer: MARCUS, meal: 'Honey Pistachio Baklava', daysAgo: 11, rating: 5, comment: 'Flaky and not too sweet. Perfect with coffee.' },
+  { chef: 'tony@neighborskitchen.test', customer: DANA, meal: 'Lasagna Bolognese', daysAgo: 7, rating: 5, comment: 'Huge, cheesy, and the sauce tastes like it simmered all day.', reply: 'It did! Eight hours. Thanks, Dana.' },
+  { chef: 'tony@neighborskitchen.test', customer: HANNAH, meal: 'Spaghetti alla Carbonara', daysAgo: 13, rating: 3, comment: 'Good flavor, but a bit salty for me.', reply: 'Thanks for the honest feedback. I have cut back on the pecorino.' },
+  { chef: 'tony@neighborskitchen.test', customer: CHRIS, meal: 'Ricotta Cheesecake', daysAgo: 2, rating: 5, comment: 'Light and creamy. Gone in one evening.' },
+  { chef: 'grace@neighborskitchen.test', customer: MARCUS, meal: 'Southern Fried Chicken', daysAgo: 9, rating: 5, comment: 'Crispiest fried chicken in the Inland Empire. Period.', reply: 'You made my day, Marcus!' },
+  { chef: 'grace@neighborskitchen.test', customer: LUIS, meal: 'Peach Cobbler', daysAgo: 5, rating: 5, comment: 'Warm, buttery and full of peaches.' },
+  { chef: 'grace@neighborskitchen.test', customer: DANA, meal: 'Baked Mac and Cheese', daysAgo: 3, rating: 4 },
+  { chef: 'priya@neighborskitchen.test', customer: CHRIS, meal: 'Matar Paneer', daysAgo: 6, rating: 5, comment: 'Soft paneer and a beautifully spiced gravy.' },
+  { chef: 'priya@neighborskitchen.test', customer: LUIS, meal: 'Lamb Biryani', daysAgo: 12, rating: 5, comment: 'Fragrant rice and tender lamb. Worth ordering ahead.', reply: 'Thank you! Biryani is my favorite dish to share.' },
+  { chef: 'priya@neighborskitchen.test', customer: HANNAH, meal: 'Dal Fry with Basmati Rice', daysAgo: 1, rating: 4, comment: 'Comforting and filling. Great value.' },
+  { chef: 'linh@neighborskitchen.test', customer: DANA, meal: 'Beef Pho', daysAgo: 8, rating: 5, comment: 'Clear, rich broth, with all the herbs packed fresh on the side.', reply: 'Cảm ơn, Dana! Enjoy the next bowl.' },
+  { chef: 'linh@neighborskitchen.test', customer: MARCUS, meal: 'Tofu Banh Mi', daysAgo: 4, rating: 4, comment: 'Crusty bread and lots of pickled veggies.' },
+  { chef: 'sofia@neighborskitchen.test', customer: HANNAH, meal: 'Quinoa & Black Bean Stuffed Peppers', daysAgo: 10, rating: 5, comment: 'Healthy and actually filling. Great for meal prep.' },
+  { chef: 'sofia@neighborskitchen.test', customer: CHRIS, meal: 'Oatmeal Pancakes', daysAgo: 3, rating: 4, comment: 'Fluffy and not too sweet. They reheated well.', reply: 'Try them with the berry compote next time!' },
+];
+
+interface SeedSuggestion {
+  chef: string;
+  by: string;
+  mealName: string;
+  description: string;
+  dietaryRequirements?: string[];
+  /** Neighbors who voted for it, besides the person who asked. */
+  voters: string[];
+  status?: SuggestionStatus;
+  reply?: string;
+}
+
+const suggestions: SeedSuggestion[] = [
+  { chef: 'maria@neighborskitchen.test', by: DANA, mealName: 'Birria tacos with consommé', description: 'Slow-cooked beef birria with a cup of consommé for dipping. Would order every weekend!', voters: [LUIS, HANNAH, CHRIS], status: 'CONSIDERING', reply: 'Love this idea! I am testing my family recipe this month.' },
+  { chef: 'maria@neighborskitchen.test', by: LUIS, mealName: 'Tamales de rajas', description: 'Pepper and cheese tamales for the holidays, by the dozen.', dietaryRequirements: ['vegetarian', 'gluten-free'], voters: [MARCUS] },
+  { chef: 'kenji@neighborskitchen.test', by: HANNAH, mealName: 'Chicken karaage bento', description: 'Japanese fried chicken with rice, pickles and a little salad. Great for school lunches.', voters: [DANA, CHRIS], status: 'ACCEPTED', reply: 'Coming to the menu next Saturday!' },
+  { chef: 'tony@neighborskitchen.test', by: MARCUS, mealName: 'Gluten-free lasagna', description: 'Your lasagna, but with gluten-free noodles so my whole family can share it.', dietaryRequirements: ['gluten-free'], voters: [HANNAH] },
+  { chef: 'priya@neighborskitchen.test', by: CHRIS, mealName: 'Butter chicken', description: 'Creamy, mildly spiced butter chicken with naan. A family favorite at our house.', voters: [DANA, LUIS, MARCUS, HANNAH], status: 'CONSIDERING' },
+  { chef: 'grace@neighborskitchen.test', by: DANA, mealName: 'Shrimp and grits', description: 'Creamy grits with Cajun shrimp, like in Charleston.', voters: [], status: 'DECLINED', reply: 'I cannot get shellfish fresh enough here, sorry! Try my fried catfish instead.' },
 ];
 
 // When each chef has food ready (0 = Sunday ... 6 = Saturday) and how it is handed over.
@@ -711,6 +783,134 @@ async function seedChef(chef: SeedChef, passwordHash: string) {
   return meals.length;
 }
 
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+const platformFeePercent = Number(process.env.PLATFORM_FEE_PERCENT ?? 10);
+
+/** Around 6 PM in California, `days` days ago. */
+function daysAgoAtDinner(days: number): Date {
+  const date = new Date(Date.now() - days * DAY);
+  date.setUTCHours(1, 0, 0, 0);
+  return date;
+}
+
+async function findChef(email: string) {
+  return prisma.chefProfile.findFirstOrThrow({ where: { user: { email } } });
+}
+
+async function findUser(email: string) {
+  return prisma.user.findUniqueOrThrow({ where: { email } });
+}
+
+async function seedPastOrder(entry: SeedPastOrder, index: number) {
+  const orderNumber = `NK-DEMO${String(index + 1).padStart(2, '0')}`;
+  const [customer, chef] = await Promise.all([findUser(entry.customer), findChef(entry.chef)]);
+  const meal = await prisma.meal.findFirstOrThrow({ where: { chefId: chef.id, name: entry.meal } });
+
+  const scheduledFor = daysAgoAtDinner(entry.daysAgo);
+  const placedAt = new Date(scheduledFor.getTime() - 2 * DAY);
+  const completedAt = new Date(scheduledFor.getTime() + HOUR / 2);
+  const order = {
+    customerId: customer.id,
+    chefId: chef.id,
+    status: 'COMPLETED' as OrderStatus,
+    subtotal: meal.price,
+    deliveryFee: new Prisma.Decimal(0),
+    platformFee: meal.price.mul(platformFeePercent).div(100).toDecimalPlaces(2),
+    total: meal.price,
+    pickupOrDelivery: 'PICKUP' as const,
+    scheduledFor,
+    completedAt,
+    createdAt: placedAt,
+  };
+  const saved = await prisma.order.upsert({ where: { orderNumber }, update: order, create: { ...order, orderNumber } });
+
+  await prisma.orderItem.deleteMany({ where: { orderId: saved.id } });
+  await prisma.orderItem.create({
+    data: { orderId: saved.id, mealId: meal.id, mealName: meal.name, quantity: 1, priceAtPurchase: meal.price },
+  });
+  await prisma.orderEvent.deleteMany({ where: { orderId: saved.id } });
+  const steps: [OrderStatus, Date][] = [
+    ['PENDING', placedAt],
+    ['CONFIRMED', new Date(placedAt.getTime() + 2 * HOUR)],
+    ['PREPARING', new Date(scheduledFor.getTime() - 3 * HOUR)],
+    ['READY', new Date(scheduledFor.getTime() - HOUR / 4)],
+    ['COMPLETED', completedAt],
+  ];
+  await prisma.orderEvent.createMany({
+    data: steps.map(([status, createdAt]) => ({ orderId: saved.id, status, createdAt })),
+  });
+
+  if (entry.rating === undefined) return false;
+  const review = {
+    chefId: chef.id,
+    customerId: customer.id,
+    rating: entry.rating,
+    comment: entry.comment ?? null,
+    chefResponse: entry.reply ?? null,
+    chefRespondedAt: entry.reply ? new Date(completedAt.getTime() + DAY) : null,
+    createdAt: new Date(completedAt.getTime() + 2 * HOUR),
+  };
+  await prisma.review.upsert({
+    where: { orderId_mealId: { orderId: saved.id, mealId: meal.id } },
+    update: review,
+    create: { ...review, orderId: saved.id, mealId: meal.id },
+  });
+  return true;
+}
+
+async function seedSuggestion(entry: SeedSuggestion) {
+  const [chef, suggester] = await Promise.all([findChef(entry.chef), findUser(entry.by)]);
+  const details = {
+    description: entry.description,
+    dietaryRequirements: entry.dietaryRequirements ?? [],
+    status: entry.status ?? 'PENDING',
+    chefResponse: entry.reply ?? null,
+  };
+  const existing = await prisma.suggestion.findFirst({
+    where: { chefId: chef.id, customerId: suggester.id, mealName: entry.mealName },
+  });
+  const suggestion = existing
+    ? await prisma.suggestion.update({ where: { id: existing.id }, data: details })
+    : await prisma.suggestion.create({ data: { ...details, chefId: chef.id, customerId: suggester.id, mealName: entry.mealName } });
+
+  const voters = await Promise.all([entry.by, ...entry.voters].map(findUser));
+  await prisma.suggestionVote.createMany({
+    data: voters.map((voter) => ({ suggestionId: suggestion.id, userId: voter.id })),
+    skipDuplicates: true,
+  });
+  const votes = await prisma.suggestionVote.count({ where: { suggestionId: suggestion.id } });
+  await prisma.suggestion.update({ where: { id: suggestion.id }, data: { votes } });
+}
+
+const averageOf = (value: number | null) => (value === null ? null : new Prisma.Decimal(value).toDecimalPlaces(2));
+
+/** Recounts ratings and completed orders from the records, the same numbers the app keeps up to date. */
+async function refreshStats() {
+  const meals = await prisma.meal.findMany({ select: { id: true } });
+  for (const meal of meals) {
+    const [reviews, totalOrders] = await Promise.all([
+      prisma.review.aggregate({ where: { mealId: meal.id }, _avg: { rating: true }, _count: true }),
+      prisma.orderItem.count({ where: { mealId: meal.id, order: { status: 'COMPLETED' } } }),
+    ]);
+    await prisma.meal.update({
+      where: { id: meal.id },
+      data: { averageRating: averageOf(reviews._avg.rating), totalReviews: reviews._count, totalOrders },
+    });
+  }
+  const chefProfiles = await prisma.chefProfile.findMany({ select: { id: true } });
+  for (const chef of chefProfiles) {
+    const [reviews, totalOrders] = await Promise.all([
+      prisma.review.aggregate({ where: { chefId: chef.id }, _avg: { rating: true }, _count: true }),
+      prisma.order.count({ where: { chefId: chef.id, status: 'COMPLETED' } }),
+    ]);
+    await prisma.chefProfile.update({
+      where: { id: chef.id },
+      data: { averageRating: averageOf(reviews._avg.rating), totalReviews: reviews._count, totalOrders },
+    });
+  }
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
@@ -723,7 +923,17 @@ async function main() {
     mealCount += await seedChef(chef, passwordHash);
   }
 
-  console.log(`Seeded ${chefs.length} chefs, ${mealCount} meals and ${customers.length} customer.`);
+  let reviewCount = 0;
+  for (const [index, entry] of pastOrders.entries()) {
+    if (await seedPastOrder(entry, index)) reviewCount += 1;
+  }
+  for (const entry of suggestions) {
+    await seedSuggestion(entry);
+  }
+  await refreshStats();
+
+  console.log(`Seeded ${chefs.length} chefs, ${mealCount} meals and ${customers.length} customers.`);
+  console.log(`Added ${pastOrders.length} past orders, ${reviewCount} reviews and ${suggestions.length} dish requests.`);
   console.log(`Demo logins (password for all: ${DEMO_PASSWORD}):`);
   console.log(`  Customer: ${customers[0].email}`);
   console.log(`  Chef:     ${chefs[0].email} (and kenji@, aisha@, tony@, grace@, priya@, linh@, sofia@)`);

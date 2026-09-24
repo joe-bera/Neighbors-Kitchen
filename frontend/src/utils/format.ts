@@ -25,6 +25,9 @@ export function formatCategory(category: MealCategory): string {
   return CATEGORY_LABELS[category]
 }
 
+/** The dietary options chefs and customers can pick from (the server accepts the same list). */
+export const DIETARY_TAGS = ['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'nut-free', 'contains-nuts', 'halal', 'kosher', 'spicy']
+
 const DIETARY_LABELS: Record<string, string> = {
   vegetarian: 'Vegetarian',
   vegan: 'Vegan',
