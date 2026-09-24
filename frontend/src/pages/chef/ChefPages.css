@@ -385,3 +385,103 @@
     width: 100%;
   }
 }
+
+/* Orders */
+.kitchen-order-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.kitchen-order-count {
+  color: var(--color-text-subtle);
+  font-weight: 400;
+}
+
+.kitchen-orders {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+}
+
+.kitchen-order {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.25rem;
+}
+
+.kitchen-order--highlight {
+  border-left: 4px solid #dd6b20;
+}
+
+.kitchen-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.kitchen-order-when {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.kitchen-order-meta {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.kitchen-order-items {
+  list-style: none;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.kitchen-order-detail {
+  font-size: 0.95rem;
+}
+
+.kitchen-order-notes {
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: #fffaf0;
+  color: #744210;
+  font-size: 0.95rem;
+}
+
+.kitchen-order-money {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.kitchen-order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.kitchen-order-cancel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.overview-orders-alert {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (max-width: 420px) {
+  .kitchen-orders {
+    grid-template-columns: 1fr;
+  }
+}

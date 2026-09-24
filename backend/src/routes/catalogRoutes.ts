@@ -11,6 +11,7 @@ export const chefRoutes = Router();
 chefRoutes.get('/', catalogController.listChefs);
 chefRoutes.post('/', requireAuth, validateBody(kitchenProfileSchema), kitchenController.becomeChef);
 chefRoutes.get('/:id', catalogController.getChef);
+chefRoutes.get('/:id/order-slots', catalogController.getOrderSlots);
 
 export const mealRoutes = Router();
 mealRoutes.get('/', catalogController.listMeals);

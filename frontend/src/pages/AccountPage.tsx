@@ -113,12 +113,11 @@ export default function AccountPage() {
           <section className="card" aria-labelledby="next-meal-heading">
             <h2 id="next-meal-heading">Find your next meal</h2>
             <p className="card-text">
-              See what the chefs near you are cooking this week. Pre-ordering for pickup or
-              delivery is coming soon.
+              See what the chefs near you are cooking this week and pre-order for pickup or delivery.
             </p>
             <div className="card-actions">
               <Link to="/meals" className="btn btn-primary">Browse meals</Link>
-              <Link to="/chefs" className="btn btn-outline">Meet the chefs</Link>
+              <Link to="/orders" className="btn btn-outline">Your orders</Link>
             </div>
           </section>
         )}

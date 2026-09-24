@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
+import AddToCart from '../components/cart/AddToCart'
 import Avatar from '../components/common/Avatar'
 import PageLoader from '../components/common/PageLoader'
 import Rating from '../components/common/Rating'
@@ -72,12 +73,7 @@ export default function MealDetailPage() {
             )}
           </dl>
 
-          <div className="meal-order-box">
-            <button type="button" className="btn btn-primary btn-block" disabled>
-              Add to cart
-            </button>
-            <p className="card-note">Online ordering opens soon.</p>
-          </div>
+          <AddToCart key={detail.id} meal={detail} />
 
           <Link to={`/chefs/${detail.chef.id}`} className="meal-chef-link">
             <Avatar name={detail.chef.chefName} />

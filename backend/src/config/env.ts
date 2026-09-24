@@ -14,6 +14,8 @@ const envSchema = z.object({
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(1000),
   // Where uploaded photos are stored and served from (/uploads/...)
   UPLOAD_DIR: z.string().min(1).default(path.resolve('uploads')),
+  // Commission kept by Neighbors Kitchen, as a percent of each order's meal subtotal
+  PLATFORM_FEE_PERCENT: z.coerce.number().min(0).max(50).default(10),
 });
 
 export type Env = z.infer<typeof envSchema>;

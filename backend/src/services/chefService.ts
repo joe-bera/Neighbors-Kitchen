@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { ChefListQuery } from '../validators/catalogSchemas.js';
+import { listOrderSlots } from './scheduling.js';
 import {
   chefDisplayName,
   containsText,
@@ -100,6 +101,20 @@ export async function listChefs({ search, city, cuisine, page, limit }: ChefList
   ]);
 
   return { chefs: chefs.map(toChefCard), pagination: paginationMeta(page, limit, total) };
+}
+
+/** The pre-order times a customer can pick from right now. */
+export async function getOrderSlots(id: string) {
+  const chef = await prisma.chefProfile.findFirst({
+    where: { id, ...visibleChefWhere },
+    select: { timezone: true, orderLeadTimeHours: true, isAcceptingOrders: true, availability: true },
+  });
+  if (!chef) throw new AppError(404, 'NOT_FOUND', 'We could not find that chef');
+  return {
+    timezone: chef.timezone,
+    isAcceptingOrders: chef.isAcceptingOrders,
+    days: chef.isAcceptingOrders ? listOrderSlots(chef) : [],
+  };
 }
 
 export async function getChefProfile(id: string) {

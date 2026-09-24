@@ -2,6 +2,8 @@ import { useState, type MouseEvent } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { logout } from '../../services/authService'
 import { useAuthStore } from '../../store/authStore'
+import { useCartStore } from '../../store/cartStore'
+import { cartCount } from '../../utils/cart'
 import './Navbar.css'
 
 interface NavbarProps {
@@ -11,6 +13,7 @@ interface NavbarProps {
 
 export default function Navbar({ variant = 'solid' }: NavbarProps) {
   const { status, user } = useAuthStore()
+  const cartItems = useCartStore((state) => cartCount(state))
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const onHero = variant === 'transparent'
@@ -54,6 +57,10 @@ export default function Navbar({ variant = 'solid' }: NavbarProps) {
         <NavLink to="/chefs" className="nav-link">Chefs</NavLink>
         {onHero && <a href="#how-it-works" className="nav-link nav-section-link">How It Works</a>}
         {user?.role === 'CHEF' && <NavLink to="/chef" className="nav-link">Dashboard</NavLink>}
+        {status === 'authenticated' && <NavLink to="/orders" className="nav-link">Orders</NavLink>}
+        <NavLink to="/cart" className="nav-link" aria-label={cartItems > 0 ? `Cart, ${cartItems} items` : 'Cart'}>
+          Cart{cartItems > 0 && <span className="cart-count" aria-hidden="true">{cartItems}</span>}
+        </NavLink>
 
         {status === 'anonymous' && (
           <>

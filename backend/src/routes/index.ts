@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import { authRoutes } from './authRoutes.js';
 import { chefRoutes, mealRoutes } from './catalogRoutes.js';
 import { myKitchenRoutes, uploadRoutes } from './kitchenRoutes.js';
+import { orderRoutes } from './orderRoutes.js';
 import { userRoutes } from './userRoutes.js';
 
 export const apiRoutes = Router();
@@ -20,3 +21,4 @@ apiRoutes.use('/chefs/me', myKitchenRoutes); // before /chefs/:id, so "me" is no
 apiRoutes.use('/chefs', chefRoutes);
 apiRoutes.use('/meals', mealRoutes);
 apiRoutes.use('/uploads', uploadRoutes);
+apiRoutes.use('/orders', orderRoutes);

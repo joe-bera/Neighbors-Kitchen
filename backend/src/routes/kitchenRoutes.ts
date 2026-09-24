@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import multer from 'multer';
 import * as kitchenController from '../controllers/kitchenController.js';
+import * as orderController from '../controllers/orderController.js';
 import * as uploadController from '../controllers/uploadController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validateRequest.js';
 import { MAX_PHOTO_BYTES } from '../services/uploadService.js';
 import { availabilitySchema, kitchenUpdateSchema } from '../validators/kitchenSchemas.js';
 import { mealCreateSchema, mealUpdateSchema } from '../validators/mealSchemas.js';
+import { cancelOrderSchema, orderStatusSchema } from '../validators/orderSchemas.js';
 
 // The signed-in chef's own kitchen: /api/v1/chefs/me/...
 export const myKitchenRoutes = Router();
@@ -19,6 +21,9 @@ myKitchenRoutes.get('/meals', kitchenController.listMyMeals);
 myKitchenRoutes.post('/meals', validateBody(mealCreateSchema), kitchenController.createMyMeal);
 myKitchenRoutes.put('/meals/:id', validateBody(mealUpdateSchema), kitchenController.updateMyMeal);
 myKitchenRoutes.delete('/meals/:id', kitchenController.deleteMyMeal);
+myKitchenRoutes.get('/orders', orderController.listKitchenOrders);
+myKitchenRoutes.post('/orders/:id/status', validateBody(orderStatusSchema), orderController.updateKitchenOrderStatus);
+myKitchenRoutes.post('/orders/:id/cancel', validateBody(cancelOrderSchema), orderController.cancelKitchenOrder);
 
 // Photo uploads: /api/v1/uploads/...
 const photoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_PHOTO_BYTES, files: 1 } });

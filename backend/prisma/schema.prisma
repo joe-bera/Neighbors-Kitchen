@@ -220,13 +220,17 @@ model Order {
   chefId              String            @map("chef_id")
   status              OrderStatus       @default(PENDING)
   subtotal            Decimal           @db.Decimal(10, 2)
+  deliveryFee         Decimal           @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  // The platform's commission, taken from the chef's payout (not added to the customer's total)
   platformFee         Decimal           @map("platform_fee") @db.Decimal(10, 2)
+  // What the customer pays: subtotal + delivery fee
   total               Decimal           @db.Decimal(10, 2)
   paymentStatus       PaymentStatus     @default(PENDING) @map("payment_status")
   paymentIntentId     String?           @map("payment_intent_id")
   pickupOrDelivery    PickupOrDelivery  @map("pickup_or_delivery")
   scheduledFor        DateTime          @map("scheduled_for")
   deliveryAddress     String?           @map("delivery_address") @db.Text
+  contactPhone        String?           @map("contact_phone")
   specialInstructions String?           @map("special_instructions") @db.Text
   customerNotes       String?           @map("customer_notes") @db.Text
   chefNotes           String?           @map("chef_notes") @db.Text
@@ -240,19 +244,38 @@ model Order {
   customer            User              @relation("CustomerOrders", fields: [customerId], references: [id])
   chef                ChefProfile       @relation("ChefOrders", fields: [chefId], references: [id])
   orderItems          OrderItem[]
+  events              OrderEvent[]
   payment             Payment?
   review              Review?
 
   @@index([customerId])
   @@index([chefId])
   @@index([status])
+  @@index([chefId, scheduledFor])
   @@map("orders")
+}
+
+// Every status change on an order, for the tracking timeline and as an audit trail.
+model OrderEvent {
+  id          String      @id @default(uuid())
+  orderId     String      @map("order_id")
+  status      OrderStatus
+  note        String?     @db.Text
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_events")
 }
 
 model OrderItem {
   id                String   @id @default(uuid())
   orderId           String   @map("order_id")
   mealId            String   @map("meal_id")
+  // The meal's name when it was ordered, so order history stays accurate if the chef renames it
+  mealName          String   @default("") @map("meal_name")
   quantity          Int
   priceAtPurchase   Decimal  @map("price_at_purchase") @db.Decimal(10, 2)
   specialRequests   String?  @map("special_requests") @db.Text

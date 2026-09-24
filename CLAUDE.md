@@ -10,7 +10,7 @@ The app is built in eight phases, each tested and runnable before the next start
 1. Foundation: database, sample chefs and meals, sign-up and login (done)
 2. Customers: browse and search chefs and meals, chef and meal pages, working landing page buttons (done)
 3. Chefs: become a chef, chef dashboard, add/edit meals with photos, availability (done)
-4. Ordering: cart, pre-orders with pickup or delivery times, order tracking
+4. Ordering: cart, pre-orders with pickup or delivery times, order tracking (done)
 5. Payments: Stripe test mode, platform fee, chef payouts
 6. Reviews, ratings and dish suggestions
 7. Map of nearby chefs, email notifications
@@ -69,6 +69,9 @@ Key conventions already in place:
 - Meal photos go through `POST /api/v1/uploads/meal-photo` (`services/uploadService.ts`): sharp re-encodes to WebP (max 1600px) and drops EXIF/GPS. Meals only accept `imageUrl` values from that endpoint (or the photo they already had). Files are served from `UPLOAD_DIR` at `/uploads/...`.
 - Chef weekly hours are `chef_availability` rows (0 = Sunday, local "HH:MM" times, one window per day) plus `orderLeadTimeHours`, `offersPickup`, `offersDelivery`, `deliveryFee` and `timezone` on the chef profile. Frontend helpers: `utils/availability.ts`.
 - The chef dashboard (`pages/chef/`) gets the kitchen from `ChefLayout` through `useChefKitchen()`; call `setKitchen` after saving and `reloadKitchen` when counts change.
+- Orders (`services/orderService.ts`): prices, fees and totals are always computed on the server from the menu. `total = subtotal + deliveryFee`; `platformFee` (PLATFORM_FEE_PERCENT of subtotal) comes out of the chef's payout and is never shown to customers. Statuses only move one step at a time (`NEXT_STATUS`); every change writes an `order_events` row. Meal rows are locked (`SELECT ... FOR UPDATE`) while checking `maxOrdersPerDay`. The chef's street address is only returned to the customer after the chef confirms a pickup order.
+- Pickup/delivery times come from `services/scheduling.ts` (Luxon, chef's `timezone`, 30-minute slots, lead time, 14-day window); orders must match an offered slot exactly. The frontend shows times with `utils/orders.ts` in the chef's time zone.
+- The cart (`store/cartStore.ts`, persisted in localStorage) holds one kitchen at a time and is cleared on logout.
 
 ### Recommended Structure
 For a full-stack marketplace application, we recommend this structure:

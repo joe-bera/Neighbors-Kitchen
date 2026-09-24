@@ -115,7 +115,7 @@ export default function ChefProfilePage() {
               <dd>{describeHandover(profile)}</dd>
             </div>
           </dl>
-          <p className="card-note">Online ordering opens soon.</p>
+          <p className="card-note">Open any meal below to add it to your cart.</p>
         </aside>
       </div>
 

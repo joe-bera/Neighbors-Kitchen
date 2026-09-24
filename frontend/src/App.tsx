@@ -4,9 +4,12 @@ import { GuestRoute, ProtectedRoute } from './components/auth/RouteGuards'
 import ScrollToTop from './components/common/ScrollToTop'
 import AppLayout from './components/layout/AppLayout'
 import AccountPage from './pages/AccountPage'
+import CartPage from './pages/CartPage'
+import CheckoutPage from './pages/CheckoutPage'
 import AvailabilityPage from './pages/chef/AvailabilityPage'
 import ChefLayout from './pages/chef/ChefLayout'
 import ChefMealsPage from './pages/chef/ChefMealsPage'
+import ChefOrdersPage from './pages/chef/ChefOrdersPage'
 import ChefOverviewPage from './pages/chef/ChefOverviewPage'
 import KitchenSettingsPage from './pages/chef/KitchenSettingsPage'
 import KitchenSetupPage from './pages/chef/KitchenSetupPage'
@@ -18,6 +21,8 @@ import LoginPage from './pages/LoginPage'
 import MealDetailPage from './pages/MealDetailPage'
 import MealsPage from './pages/MealsPage'
 import NotFoundPage from './pages/NotFoundPage'
+import OrderDetailPage from './pages/OrderDetailPage'
+import OrdersPage from './pages/OrdersPage'
 import SignupPage from './pages/SignupPage'
 import { refreshSession } from './services/api'
 
@@ -37,6 +42,10 @@ function App() {
           <Route path="/meals/:id" element={<MealDetailPage />} />
           <Route path="/chefs" element={<ChefsPage />} />
           <Route path="/chefs/:id" element={<ChefProfilePage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+          <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
           <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
           <Route path="/signup" element={<GuestRoute><SignupPage /></GuestRoute>} />
           <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
@@ -50,6 +59,7 @@ function App() {
             }
           >
             <Route index element={<ChefOverviewPage />} />
+            <Route path="orders" element={<ChefOrdersPage />} />
             <Route path="meals" element={<ChefMealsPage />} />
             <Route path="meals/new" element={<MealEditorPage />} />
             <Route path="meals/:id/edit" element={<MealEditorPage />} />

@@ -49,6 +49,7 @@ export default function ChefLayout() {
 
       <nav className="dashboard-tabs" aria-label="Chef dashboard">
         <NavLink to="/chef" end className="dashboard-tab">Overview</NavLink>
+        <NavLink to="/chef/orders" className="dashboard-tab">Orders</NavLink>
         <NavLink to="/chef/meals" className="dashboard-tab">Meals</NavLink>
         <NavLink to="/chef/availability" className="dashboard-tab">Hours &amp; delivery</NavLink>
         <NavLink to="/chef/kitchen" className="dashboard-tab">Kitchen profile</NavLink>

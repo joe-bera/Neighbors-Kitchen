@@ -14,6 +14,11 @@ export async function getChef(req: Request<{ id: string }>, res: Response) {
   res.status(200).json({ success: true, data: { chef } });
 }
 
+export async function getOrderSlots(req: Request<{ id: string }>, res: Response) {
+  const slots = await chefService.getOrderSlots(req.params.id);
+  res.status(200).json({ success: true, data: slots });
+}
+
 export async function listMeals(req: Request, res: Response) {
   const { meals, pagination } = await mealService.listMeals(parseInput(mealListQuerySchema, req.query));
   res.status(200).json({ success: true, data: meals, pagination });

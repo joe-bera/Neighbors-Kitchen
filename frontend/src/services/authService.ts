@@ -1,4 +1,5 @@
 import { useAuthStore } from '../store/authStore'
+import { useCartStore } from '../store/cartStore'
 import type { ApiSuccess } from '../types/api.types'
 import type { CurrentUser, User } from '../types/user.types'
 import { api } from './api'
@@ -35,6 +36,8 @@ export async function logout(): Promise<void> {
     await api.post('/auth/logout')
   } finally {
     useAuthStore.getState().clearSession()
+    // Do not leave a cart behind for the next person on a shared device.
+    useCartStore.getState().clear()
   }
 }
 

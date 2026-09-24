@@ -770,3 +770,120 @@ textarea.field-input {
   margin-bottom: 0.75rem;
   font-weight: 600;
 }
+
+/* Order status badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.status-badge--pending {
+  background: #fffaf0;
+  color: #9c4221;
+}
+
+.status-badge--confirmed,
+.status-badge--preparing {
+  background: var(--color-brand-soft);
+  color: var(--color-brand-ink);
+}
+
+.status-badge--ready,
+.status-badge--completed {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.status-badge--cancelled {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+/* Plus/minus quantity picker */
+.quantity-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.quantity-stepper button {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  background: none;
+  color: var(--color-brand-strong);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.quantity-stepper button:disabled {
+  color: var(--color-border-strong);
+  cursor: not-allowed;
+}
+
+.quantity-stepper button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.quantity-stepper-value {
+  min-width: 2rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* Add to cart on the meal page */
+.add-to-cart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.add-to-cart-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.add-to-cart-button {
+  flex: 1;
+}
+
+.add-to-cart-added {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.add-to-cart .alert p {
+  margin-bottom: 0.75rem;
+}
+
+/* Cart link in the navigation */
+.cart-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--color-brand-strong);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.navbar--transparent .cart-count {
+  background: white;
+  color: var(--color-brand-strong);
+}

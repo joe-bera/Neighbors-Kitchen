@@ -11,8 +11,8 @@ The app is being built in eight phases. Each phase is tested and runnable before
 | 1. Foundation | Database connected, sample chefs and meals, sign-up and login for customers and chefs | ✅ Done |
 | 2. Customers | Browse and search chefs and meals, chef profile pages, meal pages, working landing page buttons | ✅ Done |
 | 3. Chefs | Become a chef, chef dashboard, add and edit meals with photos, set availability | ✅ Done |
-| 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ⏳ Next |
-| 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏳ |
+| 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ✅ Done |
+| 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏳ Next |
 | 6. Trust | Reviews, ratings and dish suggestions | ⏳ |
 | 7. Local | Find chefs near you on a map, email notifications | ⏳ |
 | 8. Launch | Put it live on the internet | ⏳ |
@@ -191,6 +191,13 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 | GET / POST | `/api/v1/chefs/me/meals` | The chef's own meals (including hidden ones); add a meal |
 | PUT / DELETE | `/api/v1/chefs/me/meals/:id` | Edit, hide/show or delete a meal (meals with orders cannot be deleted) |
 | POST | `/api/v1/uploads/meal-photo` | Upload a meal photo (JPG/PNG/WebP, max 5 MB); saved as a resized WebP without location data |
+| GET | `/api/v1/chefs/:id/order-slots` | Pre-order times: every 30 minutes inside the chef's hours, after their lead time, up to 2 weeks ahead |
+| POST | `/api/v1/orders` | Place a pre-order (prices come from the menu; checks hours, lead time, daily limits and delivery) |
+| GET | `/api/v1/orders`, `/api/v1/orders/:id` | The customer's orders; the chef's pickup address is shown once the chef confirms |
+| POST | `/api/v1/orders/:id/cancel` | Customer cancels (allowed until the chef starts cooking) |
+| GET | `/api/v1/chefs/me/orders?view=active\|past` | Orders received by the signed-in chef, with payout after the platform fee |
+| POST | `/api/v1/chefs/me/orders/:id/status` | Chef moves an order one step: CONFIRMED → PREPARING → READY → COMPLETED |
+| POST | `/api/v1/chefs/me/orders/:id/cancel` | Chef declines or cancels an order, with an optional reason |
 | GET | `/health` | Health check |
 
 List endpoints return `pagination: { page, limit, total, totalPages }`. Public responses never include a chef's street address, exact location or contact details.
@@ -212,6 +219,11 @@ Chef dashboard, orders, payments, reviews and suggestions endpoints (see CLAUDE.
 | Set up a kitchen (become a chef) | `/chef/setup` |
 | Chef dashboard: overview, meals, hours & delivery, kitchen profile | `/chef`, `/chef/meals`, `/chef/availability`, `/chef/kitchen` |
 | Add / edit a meal | `/chef/meals/new`, `/chef/meals/:id/edit` |
+| Cart and checkout | `/cart`, `/checkout` |
+| Your orders and order tracking | `/orders`, `/orders/:id` |
+| Chef's incoming orders | `/chef/orders` |
+
+**How orders work (Phase 4):** customers fill a cart from one kitchen at a time, pick pickup or delivery and a time slot, and place a pre-order. The chef confirms (or declines), then marks it preparing, ready and picked up/delivered; the customer's order page follows along. Neighbors Kitchen keeps a 10% commission of the meal subtotal from the chef's payout (`PLATFORM_FEE_PERCENT`); customers pay the menu prices plus any delivery fee. Payment is collected in Phase 5.
 
 Uploaded photos are stored in `backend/uploads/` during development (not committed to git). Production photo storage is set up in Phase 8.
 

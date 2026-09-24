@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useState } from 'react'
 import { getApiError } from '../utils/apiError'
 
 export interface AsyncData<T> {
@@ -44,6 +44,9 @@ export function useAsyncData<T>(key: string, loader: () => Promise<T>): AsyncDat
     }
   }, [key, attempt])
 
+  // Stable between renders, so it can be used in effects (e.g. polling).
+  const retry = useCallback(() => setAttempt((count) => count + 1), [])
+
   const isCurrent = result !== null && result.key === key && result.attempt === attempt
   const error = isCurrent ? result.error : undefined
   return {
@@ -51,6 +54,6 @@ export function useAsyncData<T>(key: string, loader: () => Promise<T>): AsyncDat
     data: result?.data,
     error: error?.message ?? null,
     errorCode: error?.code ?? null,
-    retry: () => setAttempt((count) => count + 1),
+    retry,
   }
 }
