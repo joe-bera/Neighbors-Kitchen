@@ -18,6 +18,12 @@ const envSchema = z.object({
   PLATFORM_FEE_PERCENT: z.coerce.number().min(0).max(50).default(10),
   // Address lookups for the map: "census" uses the free US Census Bureau geocoder, "off" skips them (tests)
   GEOCODER: z.enum(['census', 'off']).default('census'),
+  // Where emails go: "mailbox" keeps them in the database for the practice mailbox page and sends
+  // nothing. A real email service is added at launch (Phase 8).
+  EMAIL_TRANSPORT: z.enum(['mailbox']).default('mailbox'),
+  EMAIL_FROM: z.string().min(3).default('Neighbors Kitchen <no-reply@neighborskitchen.test>'),
+  // How often the background helper sends emails and runs timed tasks
+  JOBS_INTERVAL_MS: z.coerce.number().int().min(250).default(5000),
 });
 
 export type Env = z.infer<typeof envSchema>;

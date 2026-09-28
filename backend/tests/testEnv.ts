@@ -14,4 +14,6 @@ export const testEnv = {
   FRONTEND_URL: 'http://localhost:3000',
   // Tests never call the real address service; tests that need a result mock services/geocoding.
   GEOCODER: 'off',
+  EMAIL_TRANSPORT: 'mailbox',
+  EMAIL_FROM: 'Neighbors Kitchen <no-reply@neighborskitchen.test>',
 };

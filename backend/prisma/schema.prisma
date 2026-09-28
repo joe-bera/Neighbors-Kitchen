@@ -63,6 +63,35 @@ enum Priority {
   HIGH
 }
 
+// What a notice is about: one list for the bell and for email.
+// Design: docs/superpowers/specs/2026-09-27-phase7b-notifications-design.md
+enum NotificationKind {
+  ORDER_PLACED
+  ORDER_CONFIRMED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_CANCELLED_BY_CHEF
+  ORDER_EXPIRED
+  RATE_REMINDER
+  DISH_REQUEST_ANSWERED
+  DISH_REQUEST_ACCEPTED
+  NEW_ORDER
+  CONFIRM_REMINDER
+  CHEF_ORDER_EXPIRED
+  ORDER_CANCELLED_BY_CUSTOMER
+  NEW_REVIEW
+  NEW_DISH_REQUEST
+  PASSWORD_RESET
+  PASSWORD_CHANGED
+}
+
+enum EmailStatus {
+  PENDING // waiting to be sent, or to be tried again
+  SENDING // being sent right now
+  SENT
+  FAILED  // gave up
+}
+
 model User {
   id                      String    @id @default(uuid())
   email                   String    @unique
@@ -79,6 +108,10 @@ model User {
   failedLoginAttempts     Int       @default(0) @map("failed_login_attempts")
   lockedUntil             DateTime? @map("locked_until")
   isActive                Boolean   @default(true) @map("is_active")
+  // Optional emails a person can turn off (order and password emails always go out)
+  emailRateReminders      Boolean   @default(true) @map("email_rate_reminders")
+  emailDishRequestNews    Boolean   @default(true) @map("email_dish_request_news")
+  emailKitchenFeedback    Boolean   @default(true) @map("email_kitchen_feedback")
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
 
@@ -89,6 +122,8 @@ model User {
   suggestions             Suggestion[]
   suggestionVotes         SuggestionVote[]
   refreshTokens           RefreshToken[]
+  notifications           Notification[]
+  emails                  Email[]
 
   @@map("users")
 }
@@ -370,6 +405,53 @@ model SuggestionVote {
 
   @@unique([suggestionId, userId])
   @@map("suggestion_votes")
+}
+
+// One item under the bell.
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  kind        NotificationKind
+  title       String
+  body        String?          @db.Text
+  // Where tapping it goes, e.g. /orders/<id>
+  link        String
+  readAt      DateTime?        @map("read_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// Emails to send (the background helper works through the due PENDING ones) and, in development,
+// the practice mailbox's copy of every email.
+model Email {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  toAddress   String           @map("to_address")
+  kind        NotificationKind
+  // Everything the email's wording needs, captured when it was queued
+  data        Json
+  status      EmailStatus      @default(PENDING)
+  attempts    Int              @default(0)
+  sendAfter   DateTime         @default(now()) @map("send_after")
+  lastError   String?          @map("last_error") @db.Text
+  // Written just before sending
+  subject     String?
+  html        String?          @db.Text
+  textBody    String?          @map("text_body") @db.Text
+  sentAt      DateTime?        @map("sent_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, sendAfter])
+  @@map("emails")
 }
 
 model Payment {
