@@ -4,6 +4,7 @@ import { AppError } from '../utils/errors.js';
 import { CreateReviewInput } from '../validators/feedbackSchemas.js';
 import { chefDisplayName, orderableMealWhere, paginationMeta, visibleChefWhere } from './catalogShared.js';
 import { requireOwnKitchen } from './kitchenService.js';
+import { notify, recipientSelect } from './notifications/notify.js';
 
 // Customers rate each meal of a completed order once (1-5 stars, optional comment).
 // Chefs can reply publicly; anyone signed in can report a review for a moderator.
@@ -82,6 +83,18 @@ export async function createReview(userId: string, input: CreateReviewInput) {
         select: reviewSelect,
       });
       await refreshRatings(tx, input.mealId, order.chefId);
+      const { user: chef } = await tx.chefProfile.findUniqueOrThrow({
+        where: { id: order.chefId },
+        select: { user: { select: recipientSelect } },
+      });
+      await notify(tx, chef, 'NEW_REVIEW', {
+        reviewId: created.id,
+        chefId: order.chefId,
+        mealName: created.meal.name,
+        rating: created.rating,
+        comment: created.comment,
+        customerName: chefDisplayName(created.customer),
+      });
       return created;
     });
     return toPublicReview(review);

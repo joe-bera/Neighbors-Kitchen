@@ -2,8 +2,9 @@ import { Prisma, SuggestionStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { SuggestionInput, SuggestionUpdateInput } from '../validators/feedbackSchemas.js';
-import { chefDisplayName, visibleChefWhere } from './catalogShared.js';
+import { chefDisplayName, kitchenTitle, visibleChefWhere } from './catalogShared.js';
 import { requireOwnKitchen } from './kitchenService.js';
+import { notify, recipientSelect } from './notifications/notify.js';
 
 // Customers suggest dishes they would like a chef to cook; neighbors vote for the ones they want too.
 // Each person counts once per suggestion, and the suggester's own vote is counted from the start.
@@ -39,7 +40,7 @@ function notFound() {
 }
 
 async function findVisibleChef(chefId: string) {
-  const chef = await prisma.chefProfile.findFirst({ where: { id: chefId, ...visibleChefWhere }, select: { id: true, userId: true } });
+  const chef = await prisma.chefProfile.findFirst({ where: { id: chefId, ...visibleChefWhere }, select: { id: true, userId: true, kitchenName: true, user: { select: { firstName: true } } } });
   if (!chef) throw new AppError(404, 'NOT_FOUND', 'We could not find that chef');
   return chef;
 }
@@ -59,17 +60,31 @@ export async function createSuggestion(userId: string, chefId: string, input: Su
     );
   }
 
-  const suggestion = await prisma.suggestion.create({
-    data: {
+  const suggestion = await prisma.$transaction(async (tx) => {
+    const created = await tx.suggestion.create({
+      data: {
+        chefId: chef.id,
+        customerId: userId,
+        mealName: input.mealName,
+        description: input.description,
+        dietaryRequirements: input.dietaryRequirements,
+        votes: 1,
+        voters: { create: { userId } },
+      },
+      select: suggestionSelect(userId),
+    });
+    const chefUser = await tx.user.findUniqueOrThrow({ where: { id: chef.userId }, select: recipientSelect });
+    await notify(tx, chefUser, 'NEW_DISH_REQUEST', {
+      suggestionId: created.id,
       chefId: chef.id,
-      customerId: userId,
-      mealName: input.mealName,
-      description: input.description,
-      dietaryRequirements: input.dietaryRequirements,
-      votes: 1,
-      voters: { create: { userId } },
-    },
-    select: suggestionSelect(userId),
+      kitchenName: kitchenTitle(chef),
+      mealName: created.mealName,
+      description: created.description,
+      status: created.status,
+      reply: null,
+      requesterName: chefDisplayName(created.customer),
+    });
+    return created;
   });
   return toSuggestion(suggestion);
 }
