@@ -33,6 +33,11 @@ export function chefDisplayName(user: { firstName: string; lastName: string }): 
   return `${user.firstName} ${user.lastName.charAt(0)}.`;
 }
 
+/** The kitchen's name, or "Maria's Kitchen" when the chef has not named it. */
+export function kitchenTitle(chef: { kitchenName: string | null; user: { firstName: string } }): string {
+  return chef.kitchenName ?? `${chef.user.firstName}'s Kitchen`;
+}
+
 export const chefSummarySelect = {
   id: true,
   kitchenName: true,
