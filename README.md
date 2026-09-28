@@ -14,7 +14,7 @@ The app is being built in eight phases. Each phase is tested and runnable before
 | 4. Ordering | Cart, pre-orders with pickup or delivery times, order tracking for customers and chefs | ✅ Done |
 | 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏸ Waiting for Stripe test keys |
 | 6. Trust | Reviews, ratings and dish suggestions | ✅ Done |
-| 7. Local | Find chefs near you on a map, email notifications | 🚧 Map done, emails next |
+| 7. Local | Find chefs near you on a map, email notifications | 🚧 Map done, notifications in progress |
 | 8. Launch | Put it live on the internet | ⏳ |
 
 Phase 6 was built before Phase 5, which is waiting for a Stripe account.
@@ -218,12 +218,16 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 | POST | `/api/v1/chefs/me/reviews/:id/response` | Chef posts or edits a public reply to a review |
 | GET | `/api/v1/chefs/me/suggestions` | Dish requests sent to the signed-in chef's kitchen |
 | PUT | `/api/v1/chefs/me/suggestions/:id` | Chef answers a request: thinking about it, yes, or not for my kitchen, with an optional message |
+| GET | `/api/v1/notifications?limit=20` | The signed-in person's notifications, newest first (up to 50), and how many are unread |
+| GET | `/api/v1/notifications/unread-count` | Just the unread count (the bell checks it every minute) |
+| POST | `/api/v1/notifications/read-all` | Mark all of your notifications read |
+| GET | `/api/v1/dev/emails`, `/api/v1/dev/emails/:id` | Practice mailbox: every email the app has written (development only, never on the live site) |
 | GET | `/health` | Health check |
 
 List endpoints return `pagination: { page, limit, total, totalPages }`. Public responses never include a chef's street address, exact location or contact details.
 
 ### Coming in later phases
-Payments (Phase 5) and email notifications (Phase 7).
+Payments (Phase 5). At launch (Phase 8) a real email service replaces the practice mailbox.
 
 ## Website pages
 
@@ -237,6 +241,7 @@ Payments (Phase 5) and email notifications (Phase 7).
 | Chef profile and menu | `/chefs/:id` |
 | Sign up / Log in | `/signup`, `/login` |
 | My account | `/account` |
+| Notifications | `/notifications` |
 | Set up a kitchen (become a chef) | `/chef/setup` |
 | Chef dashboard: overview, meals, hours & delivery, kitchen profile | `/chef`, `/chef/meals`, `/chef/availability`, `/chef/kitchen` |
 | Add / edit a meal | `/chef/meals/new`, `/chef/meals/:id/edit` |
@@ -244,12 +249,15 @@ Payments (Phase 5) and email notifications (Phase 7).
 | Your orders and order tracking | `/orders`, `/orders/:id` |
 | Chef's incoming orders | `/chef/orders` |
 | Chef's reviews and dish requests | `/chef/feedback`, `/chef/feedback?view=requests` |
+| Practice mailbox (development only) | `/dev/mailbox` |
 
 **How orders work (Phase 4):** customers fill a cart from one kitchen at a time, pick pickup or delivery and a time slot, and place a pre-order. The chef confirms (or declines), then marks it preparing, ready and picked up/delivered; the customer's order page follows along. Neighbors Kitchen keeps a 10% commission of the meal subtotal from the chef's payout (`PLATFORM_FEE_PERCENT`); customers pay the menu prices plus any delivery fee. Payment is collected in Phase 5.
 
 **How reviews and dish requests work (Phase 6):** once an order is completed, the customer's order page shows "Rate your meals" (stars plus an optional comment, one review per meal). Only real orders can be reviewed, so every review is a verified purchase. Ratings on chef and meal pages update right away. Chefs reply publicly from the Feedback tab of their dashboard, and anyone signed in can report a review. On a chef's page, neighbors can request a dish and vote "I want this too"; the chef answers each request (thinking about it, yes, or not for my kitchen) with an optional message shown on their page.
 
 **How location works (Phase 7):** a kitchen is placed on the map from its street address when the chef saves it (US Census Bureau geocoder, free). If only its ZIP code can be found, it is placed in the middle of the ZIP code, the chef's Kitchen profile says so and asks them to check the address, the next save tries again, and delivery distances are not checked until the street address is found. Neighbors only ever see an approximate area: a circle about a mile across that contains the kitchen but is not centered on it, and every distance is measured to that circle. The circle is only redrawn when the kitchen really moves, so editing the address text cannot be used to narrow down a home. Customers search from a ZIP code or their browser's location (rounded to about half a mile and never stored). Delivery orders from farther than the chef delivers are turned down at checkout. If an address cannot be found at all, the app goes by the ZIP code typed in it: the order is turned down only when the middle of that ZIP code is more than 5 miles beyond the chef's limit, and otherwise it goes through and the chef can decline it (as it does when there is no clear ZIP code). Map tiles © OpenStreetMap contributors. ZIP code locations come from the US Census Bureau Gazetteer (public domain) in `backend/data/zip-centroids.csv`; rebuild it with `node scripts/build-zip-centroids.mjs` (see the script for the download link).
+
+**How notifications work (Phase 7b):** a bell in the menu bar shows what happened, with a count of unread items; opening it marks them read, and "See all" (`/notifications`) keeps the history. Chefs hear about new orders and customer cancellations; customers get an emailed receipt and hear when their order is confirmed, being cooked, ready, or declined or cancelled. The important updates are also emailed. Each notice is saved together with the change that caused it, and a helper inside the API server writes and sends emails every few seconds, trying again after 1, 5, 30 and 120 minutes if sending fails. Until launch nothing is really sent: every email lands in the practice mailbox at http://localhost:3000/dev/mailbox. Emails never include street addresses or phone numbers.
 
 Uploaded photos are stored in `backend/uploads/` during development (not committed to git). Production photo storage is set up in Phase 8.
 
