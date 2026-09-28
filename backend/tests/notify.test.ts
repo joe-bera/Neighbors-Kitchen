@@ -91,6 +91,7 @@ describe('orderNoticeData', () => {
       total: new Prisma.Decimal('33.00'),
       platformFee: new Prisma.Decimal('3.30'),
       cancellationReason: null,
+      confirmBy: null,
       orderItems: [{ mealName: 'Churros', quantity: 1 }],
       chef: { userId: 'chef-user', kitchenName: null, timezone: 'America/Los_Angeles', user: { firstName: 'Maria' } },
       customer: { firstName: 'Dana', lastName: 'Kim' },
@@ -112,5 +113,25 @@ describe('orderNoticeData', () => {
       reason: 'Out of masa',
       declined: true,
     });
+  });
+
+  it('includes the confirm deadline when the order has one', () => {
+    const order = {
+      id: 'order-1',
+      orderNumber: 'NK-7QX4PD',
+      chefId: 'chef-1',
+      customerId: 'customer-1',
+      scheduledFor: new Date('2026-09-30T01:00:00.000Z'),
+      pickupOrDelivery: 'PICKUP' as const,
+      total: new Prisma.Decimal('33.00'),
+      platformFee: new Prisma.Decimal('3.30'),
+      cancellationReason: null,
+      confirmBy: new Date('2026-09-29T22:15:00.000Z'),
+      orderItems: [{ mealName: 'Churros', quantity: 1 }],
+      chef: { userId: 'chef-user', kitchenName: "Abuela's Table", timezone: 'America/Los_Angeles', user: { firstName: 'Maria' } },
+      customer: { firstName: 'Dana', lastName: 'Kim' },
+    };
+
+    expect(orderNoticeData(order).confirmBy).toBe('2026-09-29T22:15:00.000Z');
   });
 });

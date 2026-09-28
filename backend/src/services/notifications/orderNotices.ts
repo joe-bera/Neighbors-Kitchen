@@ -14,6 +14,7 @@ export interface OrderForNotice {
   total: Prisma.Decimal;
   platformFee: Prisma.Decimal;
   cancellationReason: string | null;
+  confirmBy: Date | null;
   orderItems: { mealName: string; quantity: number }[];
   chef: { userId: string; kitchenName: string | null; timezone: string; user: { firstName: string } };
   customer: { firstName: string; lastName: string };
@@ -43,7 +44,7 @@ export function orderNoticeData(
     pickupOrDelivery: order.pickupOrDelivery,
     total: order.total.toNumber(),
     chefPayout: order.total.sub(order.platformFee).toNumber(),
-    confirmBy: null,
+    confirmBy: order.confirmBy?.toISOString() ?? null,
     reason: extra.reason ?? order.cancellationReason,
     ...(extra.declined !== undefined && { declined: extra.declined }),
   };

@@ -23,6 +23,17 @@ const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   READY: 'COMPLETED',
 };
 const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+
+/**
+ * When a new order must be confirmed by: the chef's promise, or the pickup or delivery time if that
+ * comes first. The chef is reminded halfway there.
+ */
+export function confirmationTimes(placedAt: Date, scheduledFor: Date, confirmWithinHours: number) {
+  const confirmBy = new Date(Math.min(placedAt.getTime() + confirmWithinHours * HOUR_MS, scheduledFor.getTime()));
+  const chefReminderAt = new Date(placedAt.getTime() + (confirmBy.getTime() - placedAt.getTime()) / 2);
+  return { confirmBy, chefReminderAt };
+}
 const OPEN_STATUSES: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'];
 const CLOSED_STATUSES: OrderStatus[] = ['COMPLETED', 'CANCELLED'];
 // Customers can cancel until the chef starts cooking.
@@ -87,6 +98,7 @@ function sharedView(order: OrderRow) {
     paymentStatus: order.paymentStatus,
     pickupOrDelivery: order.pickupOrDelivery,
     scheduledFor: order.scheduledFor,
+    confirmBy: order.confirmBy,
     timezone,
     subtotal: money(order.subtotal),
     deliveryFee: money(order.deliveryFee),
@@ -254,6 +266,8 @@ export async function placeOrder(userId: string, input: PlaceOrderInput) {
         total: subtotal.add(deliveryFee),
         pickupOrDelivery: input.pickupOrDelivery,
         scheduledFor: input.scheduledFor,
+        // Pickup times are at least the chef's lead time (1 hour or more) away, so the deadline is always ahead.
+        ...confirmationTimes(new Date(), input.scheduledFor, chef.confirmWithinHours),
         deliveryAddress: isDelivery ? input.deliveryAddress : null,
         deliveryDistanceMiles,
         contactPhone: input.contactPhone,
