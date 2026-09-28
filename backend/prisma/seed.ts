@@ -729,16 +729,16 @@ const weekly = (days: number[], startTime: string, endTime: string) =>
 
 const fulfillment: Record<
   string,
-  { availability: ReturnType<typeof weekly>; orderLeadTimeHours: number; offersDelivery: boolean; deliveryFee: number }
+  { availability: ReturnType<typeof weekly>; orderLeadTimeHours: number; offersDelivery: boolean; deliveryFee: number; confirmWithinHours: number }
 > = {
-  'maria@neighborskitchen.test': { availability: weekly([2, 3, 4, 5, 6], '17:00', '20:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 4.99 },
-  'kenji@neighborskitchen.test': { availability: weekly([0, 3, 4, 5, 6], '16:30', '19:30'), orderLeadTimeHours: 24, offersDelivery: false, deliveryFee: 0 },
-  'aisha@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '11:00', '14:00'), orderLeadTimeHours: 12, offersDelivery: true, deliveryFee: 3.99 },
-  'tony@neighborskitchen.test': { availability: weekly([0, 5, 6], '16:00', '19:00'), orderLeadTimeHours: 48, offersDelivery: true, deliveryFee: 5.99 },
-  'grace@neighborskitchen.test': { availability: weekly([0, 6], '12:00', '18:00'), orderLeadTimeHours: 48, offersDelivery: false, deliveryFee: 0 },
-  'priya@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '17:30', '20:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 4.49 },
-  'linh@neighborskitchen.test': { availability: weekly([0, 2, 3, 4, 5, 6], '11:00', '15:00'), orderLeadTimeHours: 12, offersDelivery: false, deliveryFee: 0 },
-  'sofia@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '08:00', '12:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 2.99 },
+  'maria@neighborskitchen.test': { availability: weekly([2, 3, 4, 5, 6], '17:00', '20:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 4.99, confirmWithinHours: 4 },
+  'kenji@neighborskitchen.test': { availability: weekly([0, 3, 4, 5, 6], '16:30', '19:30'), orderLeadTimeHours: 24, offersDelivery: false, deliveryFee: 0, confirmWithinHours: 1 },
+  'aisha@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '11:00', '14:00'), orderLeadTimeHours: 12, offersDelivery: true, deliveryFee: 3.99, confirmWithinHours: 4 },
+  'tony@neighborskitchen.test': { availability: weekly([0, 5, 6], '16:00', '19:00'), orderLeadTimeHours: 48, offersDelivery: true, deliveryFee: 5.99, confirmWithinHours: 12 },
+  'grace@neighborskitchen.test': { availability: weekly([0, 6], '12:00', '18:00'), orderLeadTimeHours: 48, offersDelivery: false, deliveryFee: 0, confirmWithinHours: 12 },
+  'priya@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '17:30', '20:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 4.49, confirmWithinHours: 4 },
+  'linh@neighborskitchen.test': { availability: weekly([0, 2, 3, 4, 5, 6], '11:00', '15:00'), orderLeadTimeHours: 12, offersDelivery: false, deliveryFee: 0, confirmWithinHours: 1 },
+  'sofia@neighborskitchen.test': { availability: weekly([1, 2, 3, 4, 5], '08:00', '12:00'), orderLeadTimeHours: 24, offersDelivery: true, deliveryFee: 2.99, confirmWithinHours: 4 },
 };
 
 async function upsertUser(
