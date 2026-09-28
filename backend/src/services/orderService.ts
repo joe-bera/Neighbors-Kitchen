@@ -4,13 +4,13 @@ import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { PlaceOrderInput } from '../validators/orderSchemas.js';
-import { chefDisplayName, chefSummarySelect, orderableMealOwnWhere, toChefSummary, visibleChefWhere } from './catalogShared.js';
+import { chefDisplayName, chefSummarySelect, kitchenTitle, orderableMealOwnWhere, toChefSummary, visibleChefWhere } from './catalogShared.js';
 import { distanceMiles, roundToTenth } from './geo.js';
 import { geocodeAddress } from './geocoding.js';
 import { requireOwnKitchen } from './kitchenService.js';
 import { areaCenter } from './locationService.js';
 import { notify } from './notifications/notify.js';
-import { orderNoticeData, orderParties } from './notifications/orderNotices.js';
+import { orderNoticeData, orderNoticeInclude, orderParties } from './notifications/orderNotices.js';
 import { orderReviewSelect } from './reviewService.js';
 import { isOrderSlot, localDayBounds } from './scheduling.js';
 import { zipCentroid, zipFromAddress } from './zipCodes.js';
@@ -34,6 +34,9 @@ export function confirmationTimes(placedAt: Date, scheduledFor: Date, confirmWit
   const chefReminderAt = new Date(placedAt.getTime() + (confirmBy.getTime() - placedAt.getTime()) / 2);
   return { confirmBy, chefReminderAt };
 }
+
+// Timed tasks handle at most this many orders per pass of the background helper.
+const TIMED_TASK_BATCH = 50;
 const OPEN_STATUSES: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'];
 const CLOSED_STATUSES: OrderStatus[] = ['COMPLETED', 'CANCELLED'];
 // Customers can cancel until the chef starts cooking.
@@ -400,4 +403,64 @@ export async function cancelOrderAsCustomer(userId: string, orderId: string, rea
 export async function cancelOrderAsChef(userId: string, orderId: string, reason: string | null) {
   const order = await findChefOrder(userId, orderId);
   return chefView(await cancelOrder(order.id, OPEN_STATUSES, reason, 'chef'));
+}
+
+/** Cancels orders still waiting for the chef at their deadline, and tells both sides. Returns how many. */
+export async function expireOverdueOrders(now: Date = new Date()): Promise<number> {
+  const overdue = await prisma.order.findMany({
+    where: { status: 'PENDING', confirmBy: { lte: now } },
+    orderBy: { confirmBy: 'asc' },
+    take: TIMED_TASK_BATCH,
+    select: { id: true },
+  });
+
+  let expired = 0;
+  for (const { id } of overdue) {
+    const cancelled = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUniqueOrThrow({ where: { id }, include: orderNoticeInclude });
+      const reason = `${kitchenTitle(order.chef)} didn't confirm this order in time.`;
+      // Only while it is still waiting: the chef may have confirmed it a moment ago.
+      const { count } = await tx.order.updateMany({
+        where: { id, status: 'PENDING', confirmBy: { lte: now } },
+        data: { status: 'CANCELLED', cancelledAt: now, cancellationReason: reason },
+      });
+      if (count === 0) return false;
+      await tx.orderEvent.create({ data: { orderId: id, status: 'CANCELLED', note: reason } });
+      const parties = await orderParties(tx, order);
+      const notice = orderNoticeData(order, { reason });
+      await notify(tx, parties.customer, 'ORDER_EXPIRED', notice);
+      await notify(tx, parties.chef, 'CHEF_ORDER_EXPIRED', notice);
+      return true;
+    });
+    if (cancelled) expired += 1;
+  }
+  return expired;
+}
+
+/** Reminds chefs about orders still waiting halfway to their deadline. Returns how many reminders were sent. */
+export async function sendChefReminders(now: Date = new Date()): Promise<number> {
+  const due = await prisma.order.findMany({
+    where: { status: 'PENDING', chefReminderAt: { lte: now } },
+    orderBy: { chefReminderAt: 'asc' },
+    take: TIMED_TASK_BATCH,
+    select: { id: true },
+  });
+
+  let sent = 0;
+  for (const { id } of due) {
+    const reminded = await prisma.$transaction(async (tx) => {
+      // Only one helper can take the reminder.
+      const { count } = await tx.order.updateMany({
+        where: { id, status: 'PENDING', chefReminderAt: { lte: now } },
+        data: { chefReminderAt: null },
+      });
+      if (count === 0) return false;
+      const order = await tx.order.findUniqueOrThrow({ where: { id }, include: orderNoticeInclude });
+      const { chef } = await orderParties(tx, order);
+      await notify(tx, chef, 'CONFIRM_REMINDER', orderNoticeData(order));
+      return true;
+    });
+    if (reminded) sent += 1;
+  }
+  return sent;
 }

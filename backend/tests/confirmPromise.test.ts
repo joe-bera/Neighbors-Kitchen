@@ -2,8 +2,8 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { prisma } from '../src/lib/prisma.js';
-import { confirmationTimes } from '../src/services/orderService.js';
-import { API, availabilityInput, bearer, type Kitchen, openKitchen, pickupOrder, placeOrder, signUp } from './helpers.js';
+import { confirmationTimes, expireOverdueOrders, sendChefReminders } from '../src/services/orderService.js';
+import { API, availabilityInput, bearer, type Kitchen, openKitchen, pickupOrder, placeOrder, setOrderStatus, signUp } from './helpers.js';
 import { bellFor, emailsFor } from './notificationHelpers.js';
 
 const app = createApp();
@@ -116,5 +116,90 @@ describe('Deadlines on new orders', () => {
     const later = await prisma.order.findUniqueOrThrow({ where: { id: placed.id } });
     expect(later.confirmBy).toEqual(placed.confirmBy);
     expect(later.chefReminderAt).toEqual(placed.chefReminderAt);
+  });
+});
+
+describe('Reminders and automatic cancellation', () => {
+  async function waitingOrder() {
+    const kitchen = await openKitchen();
+    const customer = await signUp(app, 'CUSTOMER', { firstName: 'Dana', lastName: 'Kim' });
+    const res = await placeOrder(customer.accessToken, pickupOrder(kitchen));
+    expect(res.status).toBe(201);
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: res.body.data.order.id } });
+    return { kitchen, customer, order };
+  }
+  const minuteBefore = (date: Date) => new Date(date.getTime() - MINUTE);
+  const minuteAfter = (date: Date) => new Date(date.getTime() + MINUTE);
+
+  it('remind the chef once, halfway to the deadline', async () => {
+    const { kitchen, order } = await waitingOrder();
+
+    expect(await sendChefReminders(minuteBefore(order.chefReminderAt!))).toBe(0);
+    expect(await sendChefReminders(minuteAfter(order.chefReminderAt!))).toBe(1);
+    expect(await sendChefReminders(minuteAfter(order.chefReminderAt!))).toBe(0);
+
+    expect((await bellFor(kitchen.userId)).filter((notice) => notice.kind === 'CONFIRM_REMINDER')).toEqual([
+      {
+        kind: 'CONFIRM_REMINDER',
+        title: `Order ${order.orderNumber} still needs your confirmation`,
+        body: expect.stringMatching(/^Confirm by .+ or it will be cancelled automatically$/),
+        link: '/chef/orders',
+      },
+    ]);
+    expect((await emailsFor(kitchen.userId)).filter((email) => email.kind === 'CONFIRM_REMINDER')).toHaveLength(1);
+  });
+
+  it('leave orders alone once the chef has confirmed them', async () => {
+    const { kitchen, order } = await waitingOrder();
+    await setOrderStatus(kitchen, order.id, 'CONFIRMED');
+
+    expect(await sendChefReminders(minuteAfter(order.confirmBy!))).toBe(0);
+    expect(await expireOverdueOrders(minuteAfter(order.confirmBy!))).toBe(0);
+  });
+
+  it('cancel an order still waiting at its deadline, and tell both sides', async () => {
+    const { kitchen, customer, order } = await waitingOrder();
+
+    expect(await expireOverdueOrders(minuteBefore(order.confirmBy!))).toBe(0);
+    expect(await expireOverdueOrders(minuteAfter(order.confirmBy!))).toBe(1);
+
+    const reason = "Sam's Kitchen didn't confirm this order in time.";
+    const cancelled = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, include: { events: { orderBy: { createdAt: 'asc' } } } });
+    expect(cancelled).toMatchObject({ status: 'CANCELLED', cancellationReason: reason });
+    expect(cancelled.events.at(-1)).toMatchObject({ status: 'CANCELLED', note: reason });
+    expect(await bellFor(customer.userId)).toEqual([
+      { kind: 'ORDER_EXPIRED', title: 'Your order was cancelled', body: `Sam's Kitchen didn't confirm ${order.orderNumber} in time`, link: `/orders/${order.id}` },
+    ]);
+    expect((await bellFor(kitchen.userId)).map((notice) => notice.kind)).toEqual(['NEW_ORDER', 'CHEF_ORDER_EXPIRED']);
+    expect((await emailsFor(customer.userId)).map((email) => email.kind)).toEqual(['ORDER_PLACED', 'ORDER_EXPIRED']);
+    expect((await emailsFor(kitchen.userId)).map((email) => email.kind)).toEqual(['NEW_ORDER', 'CHEF_ORDER_EXPIRED']);
+  });
+
+  it('tell a chef who confirms too late that the order was cancelled', async () => {
+    const { kitchen, order } = await waitingOrder();
+    await expireOverdueOrders(minuteAfter(order.confirmBy!));
+
+    const res = await setOrderStatus(kitchen, order.id, 'CONFIRMED');
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.message).toBe('This order is cancelled, so it cannot be marked confirmed.');
+  });
+
+  it('never touch orders placed before deadlines existed', async () => {
+    const { order } = await waitingOrder();
+    await prisma.order.update({ where: { id: order.id }, data: { confirmBy: null, chefReminderAt: null } });
+    const muchLater = new Date(Date.now() + 30 * 24 * HOUR);
+
+    expect(await sendChefReminders(muchLater)).toBe(0);
+    expect(await expireOverdueOrders(muchLater)).toBe(0);
+  });
+
+  it('act only once when two helpers run at the same time', async () => {
+    const { customer, order } = await waitingOrder();
+
+    const results = await Promise.all([expireOverdueOrders(minuteAfter(order.confirmBy!)), expireOverdueOrders(minuteAfter(order.confirmBy!))]);
+
+    expect(results[0] + results[1]).toBe(1);
+    expect((await bellFor(customer.userId)).filter((notice) => notice.kind === 'ORDER_EXPIRED')).toHaveLength(1);
   });
 });

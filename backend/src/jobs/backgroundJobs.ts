@@ -1,6 +1,7 @@
 import { env } from '../config/env.js';
 import { deliverDueEmails } from '../services/notifications/emailDelivery.js';
 import { transportFromEnv } from '../services/notifications/mailer.js';
+import { expireOverdueOrders, sendChefReminders } from '../services/orderService.js';
 import { sendRateReminders } from '../services/reviewService.js';
 
 // The background helper: every JOBS_INTERVAL_MS it runs the timed tasks and sends due emails.
@@ -26,6 +27,9 @@ export async function runBackgroundTasks(tasks: BackgroundTask[], now: Date = ne
 export function startBackgroundJobs(): () => void {
   const transport = transportFromEnv();
   const tasks: BackgroundTask[] = [
+    // Cancel first, so an order that ran out of time gets no reminder in the same pass.
+    { name: 'cancel unconfirmed orders', run: expireOverdueOrders },
+    { name: 'chef reminders', run: sendChefReminders },
     { name: 'rate reminders', run: sendRateReminders },
     { name: 'send emails', run: (now) => deliverDueEmails(now, transport) },
   ];
