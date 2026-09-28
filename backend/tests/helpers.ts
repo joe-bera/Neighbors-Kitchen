@@ -69,6 +69,11 @@ export function daysFromNowAt(days: number, hour: number) {
 
 const everyDay = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, startTime: '08:00', endTime: '21:00' }));
 
+/** A full body for PUT /chefs/me/availability: open every day 8 AM to 9 PM, pickup only, a one-hour lead time. */
+export function availabilityInput(overrides: Record<string, unknown> = {}) {
+  return { schedule: everyDay, orderLeadTimeHours: 1, offersPickup: true, offersDelivery: false, deliveryFee: 0, ...overrides };
+}
+
 export async function addMeal(accessToken: string, overrides: Record<string, unknown> = {}) {
   const res = await request(app)
     .post(`${API}/chefs/me/meals`)
@@ -87,18 +92,21 @@ export async function addMeal(accessToken: string, overrides: Record<string, unk
 }
 
 /** A chef open every day 8 AM to 9 PM with a one-hour lead time and one meal on the menu. */
-export async function openKitchen(options: { offersDelivery?: boolean; deliveryFee?: number; leadHours?: number } = {}) {
+export async function openKitchen(
+  options: { offersDelivery?: boolean; deliveryFee?: number; leadHours?: number; confirmWithinHours?: number } = {},
+) {
   const chef = await signUpChefWithKitchen(app);
   await request(app)
     .put(`${API}/chefs/me/availability`)
     .set(bearer(chef.accessToken))
-    .send({
-      schedule: everyDay,
-      orderLeadTimeHours: options.leadHours ?? 1,
-      offersPickup: true,
-      offersDelivery: options.offersDelivery ?? false,
-      deliveryFee: options.deliveryFee ?? 0,
-    });
+    .send(
+      availabilityInput({
+        orderLeadTimeHours: options.leadHours ?? 1,
+        offersDelivery: options.offersDelivery ?? false,
+        deliveryFee: options.deliveryFee ?? 0,
+        confirmWithinHours: options.confirmWithinHours,
+      }),
+    );
   const mealId = await addMeal(chef.accessToken);
   return { ...chef, mealId };
 }

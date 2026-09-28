@@ -57,6 +57,8 @@ export const availabilitySchema = z
     offersPickup: z.boolean(),
     offersDelivery: z.boolean(),
     deliveryFee: z.number().min(0).max(50, 'Delivery fee must be $50 or less').default(0),
+    // Left out: the chef's current promise stays as it is.
+    confirmWithinHours: z.literal([1, 4, 12, 24], 'Choose 1, 4, 12 or 24 hours').optional(),
   })
   .superRefine((value, ctx) => {
     const days = new Set<number>();

@@ -39,6 +39,7 @@ function toOwnKitchen(chef: OwnKitchenRow) {
     serviceRadiusMiles: chef.serviceRadiusMiles.toNumber(),
     isAcceptingOrders: chef.isAcceptingOrders,
     orderLeadTimeHours: chef.orderLeadTimeHours,
+    confirmWithinHours: chef.confirmWithinHours,
     offersPickup: chef.offersPickup,
     offersDelivery: chef.offersDelivery,
     deliveryFee: chef.deliveryFee.toNumber(),

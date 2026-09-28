@@ -177,6 +177,8 @@ model ChefProfile {
   offersDelivery          Boolean  @default(false) @map("offers_delivery")
   deliveryFee             Decimal  @default(0) @map("delivery_fee") @db.Decimal(10, 2)
   timezone                String   @default("America/Los_Angeles")
+  // How many hours the chef promises to confirm new orders within: 1, 4, 12 or 24
+  confirmWithinHours      Int      @default(4) @map("confirm_within_hours")
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 
@@ -288,6 +290,10 @@ model Order {
   completedAt         DateTime?         @map("completed_at")
   // When to remind the customer to rate the meals; cleared once handled
   rateReminderAt      DateTime?         @map("rate_reminder_at")
+  // Confirm by this time or the order is cancelled automatically; null for orders placed before deadlines existed
+  confirmBy           DateTime?         @map("confirm_by")
+  // When to remind the chef (halfway to confirmBy); cleared once handled
+  chefReminderAt      DateTime?         @map("chef_reminder_at")
   createdAt           DateTime          @default(now()) @map("created_at")
   updatedAt           DateTime          @updatedAt @map("updated_at")
 
@@ -304,6 +310,8 @@ model Order {
   @@index([status])
   @@index([chefId, scheduledFor])
   @@index([status, rateReminderAt])
+  @@index([status, confirmBy])
+  @@index([status, chefReminderAt])
   @@map("orders")
 }
 

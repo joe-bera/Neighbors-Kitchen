@@ -249,6 +249,7 @@ export async function getChefProfile(id: string) {
     memberSince: chef.createdAt,
     availability: chef.availability,
     orderLeadTimeHours: chef.orderLeadTimeHours,
+    confirmWithinHours: chef.confirmWithinHours,
     offersPickup: chef.offersPickup,
     offersDelivery: chef.offersDelivery,
     deliveryFee: chef.deliveryFee.toNumber(),
