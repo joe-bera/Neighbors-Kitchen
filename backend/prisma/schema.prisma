@@ -286,6 +286,8 @@ model Order {
   cancellationReason  String?           @map("cancellation_reason") @db.Text
   cancelledAt         DateTime?         @map("cancelled_at")
   completedAt         DateTime?         @map("completed_at")
+  // When to remind the customer to rate the meals; cleared once handled
+  rateReminderAt      DateTime?         @map("rate_reminder_at")
   createdAt           DateTime          @default(now()) @map("created_at")
   updatedAt           DateTime          @updatedAt @map("updated_at")
 
@@ -301,6 +303,7 @@ model Order {
   @@index([chefId])
   @@index([status])
   @@index([chefId, scheduledFor])
+  @@index([status, rateReminderAt])
   @@map("orders")
 }
 

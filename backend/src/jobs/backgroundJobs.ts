@@ -1,6 +1,7 @@
 import { env } from '../config/env.js';
 import { deliverDueEmails } from '../services/notifications/emailDelivery.js';
 import { transportFromEnv } from '../services/notifications/mailer.js';
+import { sendRateReminders } from '../services/reviewService.js';
 
 // The background helper: every JOBS_INTERVAL_MS it runs the timed tasks and sends due emails.
 // Started by index.ts only, so tests never run it.
@@ -24,7 +25,10 @@ export async function runBackgroundTasks(tasks: BackgroundTask[], now: Date = ne
 /** Starts the helper. The next pass is scheduled when the current one finishes, so passes never overlap. */
 export function startBackgroundJobs(): () => void {
   const transport = transportFromEnv();
-  const tasks: BackgroundTask[] = [{ name: 'send emails', run: (now) => deliverDueEmails(now, transport) }];
+  const tasks: BackgroundTask[] = [
+    { name: 'rate reminders', run: sendRateReminders },
+    { name: 'send emails', run: (now) => deliverDueEmails(now, transport) },
+  ];
 
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;

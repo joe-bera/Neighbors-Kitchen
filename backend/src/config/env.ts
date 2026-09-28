@@ -24,6 +24,8 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().min(3).default('Neighbors Kitchen <no-reply@neighborskitchen.test>'),
   // How often the background helper sends emails and runs timed tasks
   JOBS_INTERVAL_MS: z.coerce.number().int().min(250).default(5000),
+  // Minutes after an order is completed before the rate-your-meal reminder
+  RATE_REMINDER_DELAY_MINUTES: z.coerce.number().int().min(1).default(120),
 });
 
 export type Env = z.infer<typeof envSchema>;

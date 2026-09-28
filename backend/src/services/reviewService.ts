@@ -5,6 +5,7 @@ import { CreateReviewInput } from '../validators/feedbackSchemas.js';
 import { chefDisplayName, orderableMealWhere, paginationMeta, visibleChefWhere } from './catalogShared.js';
 import { requireOwnKitchen } from './kitchenService.js';
 import { notify, recipientSelect } from './notifications/notify.js';
+import { orderNoticeData, orderNoticeInclude } from './notifications/orderNotices.js';
 
 // Customers rate each meal of a completed order once (1-5 stars, optional comment).
 // Chefs can reply publicly; anyone signed in can report a review for a moderator.
@@ -165,3 +166,33 @@ export const orderReviewSelect = {
   createdAt: true,
   chefResponse: true,
 } satisfies Prisma.ReviewSelect;
+
+/** Sends the rate-your-meal reminders that are due. Returns how many were sent. */
+export async function sendRateReminders(now: Date = new Date()): Promise<number> {
+  const due = await prisma.order.findMany({
+    where: { status: 'COMPLETED', rateReminderAt: { lte: now } },
+    orderBy: { rateReminderAt: 'asc' },
+    take: 50,
+    select: { id: true },
+  });
+
+  let sent = 0;
+  for (const { id } of due) {
+    const reminded = await prisma.$transaction(async (tx) => {
+      // Only one helper can take the reminder. It is cleared whether or not it is sent.
+      const { count } = await tx.order.updateMany({ where: { id, rateReminderAt: { lte: now } }, data: { rateReminderAt: null } });
+      if (count === 0) return false;
+      const order = await tx.order.findUniqueOrThrow({
+        where: { id },
+        include: { ...orderNoticeInclude, reviews: { select: { mealId: true } } },
+      });
+      const somethingUnrated = order.orderItems.some((item) => !order.reviews.some((rated) => rated.mealId === item.mealId));
+      if (!somethingUnrated) return false;
+      const customer = await tx.user.findUniqueOrThrow({ where: { id: order.customerId }, select: recipientSelect });
+      await notify(tx, customer, 'RATE_REMINDER', orderNoticeData(order));
+      return true;
+    });
+    if (reminded) sent += 1;
+  }
+  return sent;
+}

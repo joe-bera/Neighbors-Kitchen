@@ -22,6 +22,7 @@ const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   PREPARING: 'READY',
   READY: 'COMPLETED',
 };
+const MINUTE_MS = 60 * 1000;
 const OPEN_STATUSES: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'];
 const CLOSED_STATUSES: OrderStatus[] = ['COMPLETED', 'CANCELLED'];
 // Customers can cancel until the chef starts cooking.
@@ -318,10 +319,18 @@ export async function advanceOrderStatus(userId: string, orderId: string, status
   if (NEXT_STATUS[order.status] !== status) throw invalidChange();
 
   const updated = await prisma.$transaction(async (tx) => {
+    const now = new Date();
     // Only succeeds if nobody else changed the order in the meantime (e.g. a double click).
     const { count } = await tx.order.updateMany({
       where: { id: order.id, status: order.status },
-      data: { status, ...(status === 'COMPLETED' && { completedAt: new Date() }) },
+      data: {
+        status,
+        // A completed order gets its rate-your-meal reminder a little later.
+        ...(status === 'COMPLETED' && {
+          completedAt: now,
+          rateReminderAt: new Date(now.getTime() + env.RATE_REMINDER_DELAY_MINUTES * MINUTE_MS),
+        }),
+      },
     });
     if (count === 0) throw invalidChange();
     await tx.orderEvent.create({ data: { orderId: order.id, status } });

@@ -16,4 +16,5 @@ export const testEnv = {
   GEOCODER: 'off',
   EMAIL_TRANSPORT: 'mailbox',
   EMAIL_FROM: 'Neighbors Kitchen <no-reply@neighborskitchen.test>',
+  RATE_REMINDER_DELAY_MINUTES: '120',
 };
