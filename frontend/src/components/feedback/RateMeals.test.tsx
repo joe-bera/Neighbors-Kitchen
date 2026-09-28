@@ -28,6 +28,7 @@ function completedOrder(reviews: OrderReview[] = []): CustomerOrder {
     cancelledAt: null,
     completedAt: '2026-09-30T01:30:00.000Z',
     createdAt: '2026-09-24T03:00:00.000Z',
+    confirmBy: null,
     chef: { id: 'chef-1', kitchenName: "Abuela's Table", chefName: 'Maria D.', city: 'Redlands', state: 'CA', isAcceptingOrders: true },
     items: [{ mealId: 'meal-1', mealName: 'Enchiladas', quantity: 2, priceAtPurchase: 14, lineTotal: 28 }],
     events: [],

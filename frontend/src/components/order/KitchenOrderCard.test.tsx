@@ -32,6 +32,7 @@ function kitchenOrder(status: OrderStatus, nextStatus: OrderStatus | null): Kitc
     cancelledAt: null,
     completedAt: null,
     createdAt: '2026-09-24T03:00:00.000Z',
+    confirmBy: null,
     chef: { id: 'chef-1', kitchenName: "Abuela's Table", chefName: 'Maria D.', city: 'Redlands', state: 'CA', isAcceptingOrders: true },
     customer: { name: 'Chris W.' },
     items: [{ mealId: 'meal-1', mealName: 'Enchiladas', quantity: 2, priceAtPurchase: 14, lineTotal: 28 }],
@@ -44,6 +45,18 @@ function kitchenOrder(status: OrderStatus, nextStatus: OrderStatus | null): Kitc
 afterEach(cleanup)
 
 describe('KitchenOrderCard', () => {
+  it('shows when a waiting order must be confirmed by', () => {
+    render(<KitchenOrderCard order={{ ...kitchenOrder('PENDING', 'CONFIRMED'), confirmBy: '2026-09-29T22:15:00.000Z' }} onChanged={vi.fn()} />)
+
+    screen.getByText('Confirm by Tuesday, September 29 at 3:15 PM')
+  })
+
+  it('shows no deadline once the order is confirmed', () => {
+    render(<KitchenOrderCard order={{ ...kitchenOrder('CONFIRMED', 'PREPARING'), confirmBy: '2026-09-29T22:15:00.000Z' }} onChanged={vi.fn()} />)
+
+    expect(screen.queryByText(/Confirm by/)).toBeNull()
+  })
+
   it('lets the chef take the next step right after finishing the previous one', async () => {
     const onChanged = vi.fn().mockResolvedValue(undefined)
     const { rerender } = render(<KitchenOrderCard order={kitchenOrder('CONFIRMED', 'PREPARING')} onChanged={onChanged} />)

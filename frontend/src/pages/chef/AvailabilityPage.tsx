@@ -10,6 +10,7 @@ import {
   toScheduleDraft,
   type ScheduleDraftDay,
 } from '../../utils/availability'
+import { formatConfirmWithin } from '../../utils/orders'
 import { useChefKitchen } from './chefContext'
 
 const LEAD_TIME_OPTIONS = [
@@ -18,12 +19,14 @@ const LEAD_TIME_OPTIONS = [
   { hours: 48, label: '2 days ahead' },
   { hours: 72, label: '3 days ahead' },
 ]
+const CONFIRM_OPTIONS = [1, 4, 12, 24]
 
 export default function AvailabilityPage() {
   usePageTitle('Hours and delivery')
   const { kitchen, setKitchen } = useChefKitchen()
   const [days, setDays] = useState<ScheduleDraftDay[]>(() => toScheduleDraft(kitchen.availability))
   const [leadTimeHours, setLeadTimeHours] = useState(kitchen.orderLeadTimeHours)
+  const [confirmWithinHours, setConfirmWithinHours] = useState(kitchen.confirmWithinHours)
   const [offersPickup, setOffersPickup] = useState(kitchen.offersPickup)
   const [offersDelivery, setOffersDelivery] = useState(kitchen.offersDelivery)
   const [deliveryFee, setDeliveryFee] = useState(kitchen.deliveryFee.toFixed(2))
@@ -61,6 +64,7 @@ export default function AvailabilityPage() {
       const updated = await updateAvailability({
         schedule: fromScheduleDraft(days),
         orderLeadTimeHours: leadTimeHours,
+        confirmWithinHours,
         offersPickup,
         offersDelivery,
         deliveryFee: offersDelivery ? Number(deliveryFee) : 0,
@@ -154,6 +158,26 @@ export default function AvailabilityPage() {
               <option key={option.hours} value={option.hours}>{option.label}</option>
             ))}
           </select>
+        </div>
+
+        <div className="field">
+          <label className="field-label" htmlFor="confirmWithin">Confirm new orders within</label>
+          <select
+            id="confirmWithin"
+            className="field-input field-input--auto"
+            value={confirmWithinHours}
+            onChange={(event) => {
+              setConfirmWithinHours(Number(event.target.value))
+              setStatus('idle')
+            }}
+          >
+            {CONFIRM_OPTIONS.map((hours) => (
+              <option key={hours} value={hours}>{formatConfirmWithin(hours)}</option>
+            ))}
+          </select>
+          <p className="field-hint">
+            Customers see this before they order. You get a reminder halfway, and orders you haven&apos;t confirmed by then are cancelled automatically.
+          </p>
         </div>
 
         <fieldset className="checkbox-group">

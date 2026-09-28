@@ -49,6 +49,9 @@ export default function KitchenOrderCard({ order, onChanged, highlight }: Kitche
         </div>
         <OrderStatusBadge status={order.status} handover={order.pickupOrDelivery} />
       </div>
+      {isPending && order.confirmBy && (
+        <p className="kitchen-order-deadline">Confirm by {formatOrderTime(order.confirmBy, order.timezone)}</p>
+      )}
 
       <ul className="kitchen-order-items">
         {order.items.map((item) => (

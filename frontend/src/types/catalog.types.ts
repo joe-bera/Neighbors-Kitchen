@@ -96,6 +96,7 @@ export interface ChefDetail extends ChefCardData {
   menus: ChefMenu[]
   availability: { dayOfWeek: number; startTime: string; endTime: string }[]
   orderLeadTimeHours: number
+  confirmWithinHours: number
   offersPickup: boolean
   offersDelivery: boolean
   deliveryFee: number

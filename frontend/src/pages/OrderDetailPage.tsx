@@ -66,6 +66,12 @@ export default function OrderDetailPage() {
       ) : (
         <div className="card">
           <OrderProgress status={current.status} handover={current.pickupOrDelivery} />
+          {current.status === 'PENDING' && current.confirmBy && (
+            <p className="order-confirm-by">
+              Waiting for {current.chef.kitchenName ?? current.chef.chefName} to confirm by {formatOrderTime(current.confirmBy, current.timezone)}.
+              If it isn&apos;t confirmed by then, it will be cancelled automatically.
+            </p>
+          )}
         </div>
       )}
 

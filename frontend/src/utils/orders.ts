@@ -54,3 +54,8 @@ export function formatOrderTime(iso: string, timezone: string): string {
   )
   return `${day} at ${formatSlotTime(iso, timezone)}`
 }
+
+/** How long a chef promises to take to confirm new orders, e.g. "4 hours". */
+export function formatConfirmWithin(hours: number): string {
+  return `${hours} hour${hours === 1 ? '' : 's'}`
+}

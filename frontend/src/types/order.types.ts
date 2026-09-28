@@ -25,6 +25,8 @@ interface OrderBase {
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED' | 'FAILED'
   pickupOrDelivery: Handover
   scheduledFor: string
+  /** The chef must confirm by this time, or the order is cancelled automatically. Null for older orders. */
+  confirmBy: string | null
   /** The chef's time zone; order times are shown in it. */
   timezone: string
   subtotal: number

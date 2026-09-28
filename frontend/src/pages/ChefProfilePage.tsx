@@ -14,6 +14,7 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import { fetchChef } from '../services/catalogService'
 import { describeHandover, formatLeadTime, summarizeAvailability } from '../utils/availability'
 import { kitchenTitle } from '../utils/format'
+import { formatConfirmWithin } from '../utils/orders'
 import './ChefProfilePage.css'
 
 // Leaflet only loads on pages that show a map.
@@ -125,6 +126,10 @@ export default function ChefProfilePage() {
             <div>
               <dt>Order ahead</dt>
               <dd>At least {formatLeadTime(profile.orderLeadTimeHours)} before</dd>
+            </div>
+            <div>
+              <dt>Confirms orders</dt>
+              <dd>Within {formatConfirmWithin(profile.confirmWithinHours)}</dd>
             </div>
             <div>
               <dt>Getting your food</dt>

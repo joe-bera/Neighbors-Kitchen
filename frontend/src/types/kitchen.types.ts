@@ -30,6 +30,7 @@ export interface OwnKitchen {
   serviceRadiusMiles: number
   isAcceptingOrders: boolean
   orderLeadTimeHours: number
+  confirmWithinHours: number
   offersPickup: boolean
   offersDelivery: boolean
   deliveryFee: number
@@ -81,6 +82,7 @@ export interface MealInput {
 export interface AvailabilityInput {
   schedule: AvailabilityWindow[]
   orderLeadTimeHours: number
+  confirmWithinHours: number
   offersPickup: boolean
   offersDelivery: boolean
   deliveryFee: number

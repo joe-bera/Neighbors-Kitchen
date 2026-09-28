@@ -428,6 +428,12 @@
   font-size: 1.05rem;
 }
 
+.kitchen-order-deadline {
+  margin: 0.5rem 0 0;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
 .kitchen-order-meta {
   font-size: 0.9rem;
   color: var(--color-text-muted);

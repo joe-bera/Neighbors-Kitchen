@@ -491,3 +491,8 @@
   font-weight: 700;
   color: var(--color-brand-strong);
 }
+
+.order-confirm-by {
+  margin: 1rem 0 0;
+  color: var(--color-text-muted);
+}

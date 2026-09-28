@@ -13,7 +13,7 @@ import type { Handover, OrderSlots } from '../types/order.types'
 import { getApiError } from '../utils/apiError'
 import { cartSubtotal, type Cart } from '../utils/cart'
 import { formatPrice } from '../utils/format'
-import { formatSlotDay, formatSlotTime } from '../utils/orders'
+import { formatConfirmWithin, formatSlotDay, formatSlotTime } from '../utils/orders'
 import './Orders.css'
 
 export default function CheckoutPage() {
@@ -292,6 +292,10 @@ function CheckoutForm({ cart, chef, slots, reloadSlots }: CheckoutFormProps) {
             {handover === 'PICKUP' ? 'Pickup' : 'Delivery'}: {formatSlotDay(day!)} at {formatSlotTime(time, slots.timezone)}
           </p>
         )}
+        <p className="card-note">
+          If {chefName} hasn&apos;t confirmed your order within {formatConfirmWithin(chef.confirmWithinHours)} (or by the{' '}
+          {handover === 'PICKUP' ? 'pickup' : 'delivery'} time, if that&apos;s sooner), it&apos;s cancelled automatically and you&apos;ll be told right away.
+        </p>
         <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
           {submitting ? 'Sending your order...' : 'Place pre-order'}
         </button>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chefActionLabel, formatOrderTime, formatSlotDay, formatSlotTime, orderStatusLabel } from './orders'
+import { chefActionLabel, formatConfirmWithin, formatOrderTime, formatSlotDay, formatSlotTime, orderStatusLabel } from './orders'
 
 const LA = 'America/Los_Angeles'
 
@@ -42,5 +42,13 @@ describe('time formatting in the chef time zone', () => {
 
   it('shows the full date and time of an order', () => {
     expect(formatOrderTime('2026-09-30T00:30:00.000Z', LA)).toBe('Tuesday, September 29 at 5:30 PM')
+  })
+})
+
+describe('formatConfirmWithin', () => {
+  it('says how long the chef takes to confirm', () => {
+    expect(formatConfirmWithin(1)).toBe('1 hour')
+    expect(formatConfirmWithin(4)).toBe('4 hours')
+    expect(formatConfirmWithin(24)).toBe('24 hours')
   })
 })
