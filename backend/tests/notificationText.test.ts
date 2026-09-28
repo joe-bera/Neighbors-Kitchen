@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { chefDisplayName } from '../src/services/catalogShared.js';
 import { bellText } from '../src/services/notifications/bellText.js';
+import { excerpt } from '../src/services/notifications/format.js';
 import { sampleOrder, sampleRequest, sampleReview } from './noticeFixtures.js';
 
 describe('bellText', () => {
@@ -91,5 +93,20 @@ describe('bellText', () => {
     expect(bellText('ORDER_PLACED', sampleOrder)).toBeNull();
     expect(bellText('PASSWORD_RESET', { firstName: 'Dana', token: 'abc' })).toBeNull();
     expect(bellText('PASSWORD_CHANGED', { firstName: 'Dana' })).toBeNull();
+  });
+});
+
+// An emoji or a rare character takes two UTF-16 units, and some characters are several code points.
+// Cutting between them leaves half a character, which the database refuses (and which looks broken).
+describe('Text people typed', () => {
+  it('is shortened without cutting a character in half', () => {
+    expect(excerpt(`${'a'.repeat(118)}😀 and more words after it`)).toBe(`${'a'.repeat(118)}😀…`);
+    expect(excerpt(`${'a'.repeat(118)}👨‍👩‍👧 and more words after it`)).toBe(`${'a'.repeat(118)}👨‍👩‍👧…`);
+  });
+
+  it('gives a whole character as the initial of a surname', () => {
+    expect(chefDisplayName({ firstName: 'Dana', lastName: '𠮷田' })).toBe('Dana 𠮷.');
+    expect(chefDisplayName({ firstName: 'Dana', lastName: '🌮 Lopez' })).toBe('Dana 🌮.');
+    expect(chefDisplayName({ firstName: 'Ana', lastName: 'E\u0301vora' })).toBe('Ana E\u0301.');
   });
 });

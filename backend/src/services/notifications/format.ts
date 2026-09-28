@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon';
+import { graphemes } from '../../utils/text.js';
 
 // Wording shared by the bell and email text. Times are shown in the chef's time zone, like the rest of the app.
 
@@ -21,8 +22,8 @@ export function formatItems(items: { name: string; quantity: number }[]): string
 
 /** Text shortened to at most `max` characters, ending in "…" when something was cut. */
 export function excerpt(text: string, max = 120): string {
-  const trimmed = text.trim();
-  return trimmed.length <= max ? trimmed : `${trimmed.slice(0, max - 1).trimEnd()}…`;
+  const characters = graphemes(text.trim());
+  return characters.length <= max ? characters.join('') : `${characters.slice(0, max - 1).join('').trimEnd()}…`;
 }
 
 /** What a dish request's status is called on the website. */

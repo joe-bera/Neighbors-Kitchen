@@ -95,6 +95,16 @@ describe('New orders', () => {
     expect((await emailsFor(otherChef.userId)).map((email) => email.kind)).toEqual(['ORDER_PLACED']);
     expect((await bellFor(kitchen.userId)).map((notice) => notice.kind)).toEqual(['NEW_ORDER']);
   });
+
+  it('work for a customer whose surname starts with a rare character', async () => {
+    const kitchen = await openKitchen();
+    const customer = await signUp(app, 'CUSTOMER', { firstName: 'Dana', lastName: '𠮷田' });
+
+    const res = await placeOrder(customer.accessToken, pickupOrder(kitchen));
+
+    expect(res.status).toBe(201);
+    expect((await bellFor(kitchen.userId))[0]).toMatchObject({ kind: 'NEW_ORDER', title: 'New order from Dana 𠮷.' });
+  });
 });
 
 describe('Chef updates', () => {
@@ -188,5 +198,20 @@ describe('Cancellations', () => {
     expect((await emailsFor(kitchen.userId)).map((email) => email.kind)).toEqual(['NEW_ORDER', 'ORDER_CANCELLED_BY_CUSTOMER']);
     expect(await bellFor(customer.userId)).toEqual([]);
     expect((await emailsFor(customer.userId)).map((email) => email.kind)).toEqual(['ORDER_PLACED']);
+  });
+
+  it('keep an emoji whole when a long reason is shortened for the bell', async () => {
+    const kitchen = await openKitchen();
+    const customer = await signUpDana();
+    const declined = await placedOrder(kitchen, customer);
+    const cancelled = await placedOrder(kitchen, customer);
+    const reason = `${'a'.repeat(118)}😀 sorry`;
+
+    expect((await cancelAsChef(kitchen, declined.id, reason)).status).toBe(200);
+    expect((await cancelAsCustomer(customer, cancelled.id, reason)).status).toBe(200);
+
+    const shortened = `${'a'.repeat(118)}😀…`;
+    expect((await bellFor(customer.userId)).find((notice) => notice.kind === 'ORDER_CANCELLED_BY_CHEF')?.body).toBe(shortened);
+    expect((await bellFor(kitchen.userId)).find((notice) => notice.kind === 'ORDER_CANCELLED_BY_CUSTOMER')?.body).toBe(shortened);
   });
 });

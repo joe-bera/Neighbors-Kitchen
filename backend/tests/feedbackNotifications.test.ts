@@ -64,6 +64,19 @@ describe('New reviews', () => {
     expect(kinds(await bellFor(kitchen.userId))).toContain('NEW_REVIEW');
     expect(kinds(await emailsFor(kitchen.userId))).not.toContain('NEW_REVIEW');
   });
+
+  it('save a comment with an emoji where the bell line is cut, keeping the emoji whole', async () => {
+    const kitchen = await openKitchen();
+    const customer = await signUpDana();
+    const orderId = await completedOrder(kitchen, customer.accessToken);
+    const comment = `${'a'.repeat(118)}😀 so good`;
+
+    const res = await request(app).post(`${API}/reviews`).set(bearer(customer.accessToken)).send({ orderId, mealId: kitchen.mealId, rating: 5, comment });
+
+    expect(res.status).toBe(201);
+    const [notice] = (await bellFor(kitchen.userId)).filter((row) => row.kind === 'NEW_REVIEW');
+    expect(notice.body).toBe(`${'a'.repeat(118)}😀…`);
+  });
 });
 
 describe('New dish requests', () => {

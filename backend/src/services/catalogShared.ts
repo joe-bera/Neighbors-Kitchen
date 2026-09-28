@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { graphemes } from '../utils/text.js';
 
 // Rules for what the public catalog shows, and how records are shaped for it.
 // Public responses never include a chef's street address, exact location or contact details.
@@ -30,7 +31,7 @@ export function titleCase(text: string): string {
 
 /** "Maria Delgado" is shown publicly as "Maria D." */
 export function chefDisplayName(user: { firstName: string; lastName: string }): string {
-  return `${user.firstName} ${user.lastName.charAt(0)}.`;
+  return `${user.firstName} ${graphemes(user.lastName)[0] ?? ''}.`;
 }
 
 /** The kitchen's name, or "Maria's Kitchen" when the chef has not named it. */
