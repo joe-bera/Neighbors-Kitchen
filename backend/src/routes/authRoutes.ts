@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { env } from '../config/env.js';
 import * as authController from '../controllers/authController.js';
 import { validateBody } from '../middleware/validateRequest.js';
-import { loginSchema, registerSchema } from '../validators/authSchemas.js';
+import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '../validators/authSchemas.js';
 
 // A tighter limit for sign-up and login attempts from one IP address.
 const credentialLimiter = rateLimit({
@@ -20,5 +20,7 @@ export const authRoutes = Router();
 
 authRoutes.post('/register', credentialLimiter, validateBody(registerSchema), authController.register);
 authRoutes.post('/login', credentialLimiter, validateBody(loginSchema), authController.login);
+authRoutes.post('/forgot-password', credentialLimiter, validateBody(forgotPasswordSchema), authController.forgotPassword);
+authRoutes.post('/reset-password', credentialLimiter, validateBody(resetPasswordSchema), authController.resetPassword);
 authRoutes.post('/refresh-token', authController.refreshToken);
 authRoutes.post('/logout', authController.logout);

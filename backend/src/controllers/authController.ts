@@ -49,3 +49,16 @@ export async function logout(req: Request, res: Response) {
   res.clearCookie(REFRESH_COOKIE, refreshCookieOptions);
   res.status(200).json({ success: true, message: 'Logged out' });
 }
+
+// The same answer whether or not the account exists.
+const RESET_LINK_SENT = "If there's an account for that email, we sent a link to reset the password.";
+
+export async function forgotPassword(req: Request, res: Response) {
+  await authService.requestPasswordReset(req.body.email);
+  res.status(200).json({ success: true, data: null, message: RESET_LINK_SENT });
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  await authService.resetPassword(req.body.token, req.body.password);
+  res.status(200).json({ success: true, data: null, message: 'Your password was changed. Log in with your new password.' });
+}

@@ -6,10 +6,15 @@ import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { LoginInput, RegisterInput } from '../validators/authSchemas.js';
+import { notify, recipientSelect } from './notifications/notify.js';
 
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MINUTES = 15;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+const RESET_LINK_MINUTES = 60;
+// At most one reset email per account in this many minutes, so nobody can flood an inbox.
+const RESET_EMAIL_GAP_MINUTES = 2;
 
 // Checked when the email is unknown, so that path takes as long as a real password check.
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync('not-a-real-password', env.BCRYPT_ROUNDS);
@@ -192,4 +197,53 @@ export async function refresh(refreshToken: string | undefined): Promise<Omit<Se
 export async function logout(refreshToken: string | undefined): Promise<void> {
   if (!refreshToken) return;
   await prisma.refreshToken.deleteMany({ where: { tokenHash: hashToken(refreshToken) } });
+}
+
+function invalidResetLink() {
+  return new AppError(400, 'INVALID_RESET_LINK', 'This link has expired or was already used. Ask for a new one.');
+}
+
+/**
+ * Emails a reset link when an active account has this email. The caller always gives the same answer,
+ * so nobody can use this to find out who has an account.
+ */
+export async function requestPasswordReset(email: string, now: Date = new Date()): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { ...recipientSelect, firstName: true, passwordResetExpires: true },
+  });
+  if (!user || !user.isActive) return;
+  const lastSentAt = user.passwordResetExpires ? user.passwordResetExpires.getTime() - RESET_LINK_MINUTES * MINUTE_MS : null;
+  if (lastSentAt !== null && now.getTime() - lastSentAt < RESET_EMAIL_GAP_MINUTES * MINUTE_MS) return;
+
+  const token = crypto.randomBytes(32).toString('base64url');
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: { passwordResetToken: hashToken(token), passwordResetExpires: new Date(now.getTime() + RESET_LINK_MINUTES * MINUTE_MS) },
+    });
+    await notify(tx, user, 'PASSWORD_RESET', { firstName: user.firstName, token });
+  });
+}
+
+/** Sets a new password from a reset link. The link works once, and every session is logged out. */
+export async function resetPassword(token: string, password: string, now: Date = new Date()): Promise<void> {
+  const tokenHash = hashToken(token);
+  const user = await prisma.user.findUnique({
+    where: { passwordResetToken: tokenHash },
+    select: { ...recipientSelect, firstName: true, passwordResetExpires: true },
+  });
+  if (!user || !user.isActive || !user.passwordResetExpires || user.passwordResetExpires <= now) throw invalidResetLink();
+
+  const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
+  await prisma.$transaction(async (tx) => {
+    // Only the first use counts, even if the link is submitted twice at once.
+    const { count } = await tx.user.updateMany({
+      where: { id: user.id, passwordResetToken: tokenHash },
+      data: { passwordHash, passwordResetToken: null, passwordResetExpires: null, failedLoginAttempts: 0, lockedUntil: null },
+    });
+    if (count === 0) throw invalidResetLink();
+    await tx.refreshToken.deleteMany({ where: { userId: user.id } });
+    await notify(tx, user, 'PASSWORD_CHANGED', { firstName: user.firstName });
+  });
 }
