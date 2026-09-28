@@ -3,6 +3,7 @@ import { authRoutes } from './authRoutes.js';
 import { chefRoutes, mealRoutes } from './catalogRoutes.js';
 import { reviewRoutes, suggestionRoutes } from './feedbackRoutes.js';
 import { myKitchenRoutes, uploadRoutes } from './kitchenRoutes.js';
+import { notificationRoutes } from './notificationRoutes.js';
 import { orderRoutes } from './orderRoutes.js';
 import { userRoutes } from './userRoutes.js';
 
@@ -25,3 +26,4 @@ apiRoutes.use('/uploads', uploadRoutes);
 apiRoutes.use('/orders', orderRoutes);
 apiRoutes.use('/reviews', reviewRoutes);
 apiRoutes.use('/suggestions', suggestionRoutes);
+apiRoutes.use('/notifications', notificationRoutes);
