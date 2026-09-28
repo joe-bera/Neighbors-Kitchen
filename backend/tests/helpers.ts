@@ -29,7 +29,8 @@ export async function signUp(
     lastName: names.lastName ?? 'Rivera',
     role,
   });
-  if (res.status !== 201) throw new Error(`sign-up failed: ${JSON.stringify(res.body)}`);
+  // Status and raw text, so an unexpected answer (even a non-JSON one) can be diagnosed.
+  if (res.status !== 201) throw new Error(`sign-up failed: ${res.status} ${res.get('Content-Type') ?? ''} ${res.text}`);
   const refreshCookie = res.get('Set-Cookie')?.find((cookie) => cookie.startsWith('nk_refresh='))?.split(';')[0] ?? '';
   return {
     userId: res.body.data.user.id as string,

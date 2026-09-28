@@ -12,6 +12,7 @@ import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import { MealCategory, OrderStatus, Prisma, PrismaClient, SuggestionStatus, UserRole } from '@prisma/client';
 import { approximateLocation, seededRandom } from '../src/services/geo.js';
+import { bellText } from '../src/services/notifications/bellText.js';
 import { zipCentroid } from '../src/services/zipCodes.js';
 
 const prisma = new PrismaClient();
@@ -923,6 +924,73 @@ async function refreshStats() {
   }
 }
 
+/** A few unread bell items for the demo accounts, matching the sample data. Replaced on every run. */
+async function seedDemoNotifications() {
+  const [chris, maria, tanaka, abuela] = await Promise.all([
+    findUser(CHRIS),
+    findUser('maria@neighborskitchen.test'),
+    findChef('kenji@neighborskitchen.test'),
+    findChef('maria@neighborskitchen.test'),
+  ]);
+  const notices = [
+    {
+      userId: chris.id,
+      kind: 'DISH_REQUEST_ACCEPTED' as const,
+      hoursAgo: 20,
+      text: bellText('DISH_REQUEST_ACCEPTED', {
+        suggestionId: '',
+        chefId: tanaka.id,
+        kitchenName: tanaka.kitchenName ?? 'Tanaka Home Kitchen',
+        mealName: 'Chicken karaage bento',
+        description: null,
+        status: 'ACCEPTED',
+        reply: 'Coming to the menu next Saturday!',
+        requesterName: 'Hannah L.',
+      }),
+    },
+    {
+      userId: maria.id,
+      kind: 'NEW_DISH_REQUEST' as const,
+      hoursAgo: 30,
+      text: bellText('NEW_DISH_REQUEST', {
+        suggestionId: '',
+        chefId: abuela.id,
+        kitchenName: abuela.kitchenName ?? "Abuela's Table",
+        mealName: 'Birria tacos with consommé',
+        description: 'Slow-cooked beef birria with a cup of consommé for dipping. Would order every weekend!',
+        status: 'PENDING',
+        reply: null,
+        requesterName: 'Dana K.',
+      }),
+    },
+    {
+      userId: maria.id,
+      kind: 'NEW_REVIEW' as const,
+      hoursAgo: 70,
+      text: bellText('NEW_REVIEW', {
+        reviewId: '',
+        chefId: abuela.id,
+        mealName: 'Smoky Chickpea Fajitas',
+        rating: 5,
+        comment: "Best vegetarian fajitas I've had. Great smoky flavor.",
+        customerName: 'Hannah L.',
+      }),
+    },
+  ];
+  await prisma.notification.deleteMany({ where: { userId: { in: [chris.id, maria.id] } } });
+  await prisma.notification.createMany({
+    data: notices.map(({ userId, kind, hoursAgo, text }) => ({
+      userId,
+      kind,
+      title: text!.title,
+      body: text!.body,
+      link: text!.link,
+      createdAt: new Date(Date.now() - hoursAgo * HOUR),
+    })),
+  });
+  return notices.length;
+}
+
 /** Puts kitchens made outside the seed (for example while trying the app) on the map, without calling the geocoder. */
 async function fillMissingAreas() {
   const chefs = await prisma.chefProfile.findMany({
@@ -973,9 +1041,11 @@ async function main() {
     await seedSuggestion(entry);
   }
   await refreshStats();
+  const demoNotices = await seedDemoNotifications();
 
   console.log(`Seeded ${chefs.length} chefs, ${mealCount} meals and ${customers.length} customers.`);
   console.log(`Added ${pastOrders.length} past orders, ${reviewCount} reviews and ${suggestions.length} dish requests.`);
+  console.log(`Gave the demo accounts ${demoNotices} bell items.`);
   console.log(`Placed ${otherKitchens} other kitchens on the map.`);
   console.log(`Demo logins (password for all: ${DEMO_PASSWORD}):`);
   console.log(`  Customer: ${customers[0].email}`);

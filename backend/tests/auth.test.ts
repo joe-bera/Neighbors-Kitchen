@@ -223,7 +223,8 @@ describe('POST /auth/refresh-token', () => {
 
     const res = await request(app).post(`${API}/auth/refresh-token`).set('Cookie', refreshCookie(signup));
 
-    expect(res.status).toBe(401);
+    // The answer is shown if this ever fails, to diagnose a one-off seen on 2026-09-28.
+    expect(res.status, `${res.get('Content-Type') ?? ''} ${res.text}`).toBe(401);
   });
 });
 
