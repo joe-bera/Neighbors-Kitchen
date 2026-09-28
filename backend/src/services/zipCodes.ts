@@ -25,3 +25,16 @@ export function zipCentroid(zip: string): LatLng | null {
   centroids ??= loadCentroids();
   return centroids.get(match[1]) ?? null;
 }
+
+// Five digits in a row (a ZIP+4 is fine), not part of a longer number.
+const FIVE_DIGITS = /(?<!\d)(\d{5})(?:-\d{4})?(?!\d)/g;
+
+/**
+ * The 5-digit ZIP code in an address someone typed, or null when there is none or it is unclear which
+ * number is the ZIP code (for example a gate code next to it). A house number at the start is not a ZIP code.
+ */
+export function zipFromAddress(address: string): string | null {
+  const text = address.trim();
+  const candidates = [...text.matchAll(FIVE_DIGITS)].filter((match) => match.index !== 0);
+  return candidates.length === 1 ? candidates[0][1] : null;
+}

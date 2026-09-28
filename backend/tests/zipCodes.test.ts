@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { distanceMiles } from '../src/services/geo.js';
-import { zipCentroid } from '../src/services/zipCodes.js';
+import { zipCentroid, zipFromAddress } from '../src/services/zipCodes.js';
 
 describe('zipCentroid', () => {
   it('finds the middle of a ZIP code area', () => {
@@ -24,5 +24,24 @@ describe('zipCentroid', () => {
     expect(zipCentroid('9237')).toBeNull();
     expect(zipCentroid('abcde')).toBeNull();
     expect(zipCentroid('')).toBeNull();
+  });
+});
+
+describe('zipFromAddress', () => {
+  it.each([
+    ['82-500 Hwy 111, Indio, CA 92201', '92201'],
+    ['1 Orange St, Redlands, CA 92373-1234', '92373'],
+    ['12345 Main St, Redlands, CA 92373', '92373'],
+    ['1 Orange St, Redlands, CA92373', '92373'],
+  ])('reads the ZIP code in "%s"', (address, zip) => {
+    expect(zipFromAddress(address)).toBe(zip);
+  });
+
+  it.each([
+    ['1 Orange St, Redlands', 'there is none'],
+    ['12345 Main St, Redlands', 'a 5-digit house number is not a ZIP code'],
+    ['1 Orange St, Redlands, CA 92373, gate code 45678', 'it is unclear which 5-digit number is the ZIP code'],
+  ])('finds no ZIP code in "%s": %s', (address) => {
+    expect(zipFromAddress(address)).toBeNull();
   });
 });

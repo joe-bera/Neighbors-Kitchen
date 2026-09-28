@@ -11,6 +11,7 @@ import { requireOwnKitchen } from './kitchenService.js';
 import { areaCenter } from './locationService.js';
 import { orderReviewSelect } from './reviewService.js';
 import { isOrderSlot, localDayBounds } from './scheduling.js';
+import { zipCentroid, zipFromAddress } from './zipCodes.js';
 
 // Order lifecycle: PENDING -> CONFIRMED -> PREPARING -> READY -> COMPLETED, or CANCELLED along the way.
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -125,24 +126,44 @@ function chefView(order: OrderRow) {
   };
 }
 
+// A ZIP code's middle can be miles from the address itself, so an address judged only by its ZIP code
+// is refused just when that ZIP code is this much farther than the chef delivers.
+const ZIP_MARGIN_MILES = 5;
+
 /**
  * Miles from the chef's public area to a delivery address, or null when either cannot be placed on
  * the map precisely (the order then goes ahead, and the chef can decline it). Refuses addresses
- * farther than the chef delivers.
+ * farther than the chef delivers; an address that cannot be found is refused only when its ZIP code
+ * is clearly too far.
  */
 async function deliveryDistance(chef: ChefProfile, address: string): Promise<number | null> {
   // A kitchen placed only by its ZIP code could really be miles from that spot, so it is not measured.
   if (chef.locationPrecision !== 'ADDRESS') return null;
   const kitchenArea = areaCenter(chef);
   if (!kitchenArea) return null;
+  const limit = chef.serviceRadiusMiles.toNumber();
+  const outsideDeliveryArea = (why: string) => {
+    const message = `${chef.kitchenName ?? 'This chef'} delivers up to ${limit} miles from their kitchen. ${why}`;
+    return new AppError(409, 'OUTSIDE_DELIVERY_AREA', message, { deliveryAddress: message });
+  };
+
   const destination = await geocodeAddress(address);
-  if (!destination) return null;
+  if (!destination) {
+    const zip = zipFromAddress(address);
+    const zipCenter = zip && zipCentroid(zip);
+    if (!zipCenter) return null;
+    const zipMiles = roundToTenth(distanceMiles(kitchenArea, zipCenter));
+    if (zipMiles > limit + ZIP_MARGIN_MILES) {
+      throw outsideDeliveryArea(
+        `We could not find this exact address, and its ZIP code ${zip} is about ${zipMiles} miles away. Please check the address or choose pickup.`,
+      );
+    }
+    return null;
+  }
 
   const miles = roundToTenth(distanceMiles(kitchenArea, destination));
-  const limit = chef.serviceRadiusMiles.toNumber();
   if (miles > limit) {
-    const message = `${chef.kitchenName ?? 'This chef'} delivers up to ${limit} miles from their kitchen. This address is about ${miles} miles away. Please choose pickup or another address.`;
-    throw new AppError(409, 'OUTSIDE_DELIVERY_AREA', message, { deliveryAddress: message });
+    throw outsideDeliveryArea(`This address is about ${miles} miles away. Please choose pickup or another address.`);
   }
   return miles;
 }
