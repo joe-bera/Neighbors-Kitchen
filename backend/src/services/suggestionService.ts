@@ -142,12 +142,48 @@ export async function listOwnKitchenSuggestions(userId: string) {
   return suggestions.map(toSuggestion).sort((a, b) => rank(a.status) - rank(b.status));
 }
 
+/**
+ * The chef's answer to a request. The person who asked hears about any change of status or reply;
+ * everyone else who voted for the dish hears only when it first becomes a yes.
+ */
 export async function updateSuggestion(userId: string, suggestionId: string, input: SuggestionUpdateInput) {
   const chef = await requireOwnKitchen(userId);
-  const { count } = await prisma.suggestion.updateMany({
-    where: { id: suggestionId, chefId: chef.id },
-    data: { status: input.status, chefResponse: input.chefResponse },
+  return prisma.$transaction(async (tx) => {
+    const before = await tx.suggestion.findFirst({
+      where: { id: suggestionId, chefId: chef.id },
+      select: { status: true, chefResponse: true, mealName: true, description: true, customerId: true, customer: { select: { firstName: true, lastName: true } } },
+    });
+    if (!before) throw notFound();
+    const after = await tx.suggestion.update({
+      where: { id: suggestionId },
+      data: { status: input.status, chefResponse: input.chefResponse },
+      select: suggestionSelect(userId),
+    });
+
+    const statusChanged = before.status !== input.status;
+    if (statusChanged || before.chefResponse !== input.chefResponse) {
+      const owner = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { firstName: true } });
+      const notice = {
+        suggestionId,
+        chefId: chef.id,
+        kitchenName: kitchenTitle({ kitchenName: chef.kitchenName, user: owner }),
+        mealName: before.mealName,
+        description: before.description,
+        status: input.status,
+        reply: input.chefResponse,
+        requesterName: chefDisplayName(before.customer),
+      };
+      const asker = await tx.user.findUniqueOrThrow({ where: { id: before.customerId }, select: recipientSelect });
+      await notify(tx, asker, 'DISH_REQUEST_ANSWERED', notice);
+
+      if (statusChanged && input.status === 'ACCEPTED') {
+        const voters = await tx.suggestionVote.findMany({
+          where: { suggestionId, userId: { not: before.customerId } },
+          select: { user: { select: recipientSelect } },
+        });
+        for (const { user } of voters) await notify(tx, user, 'DISH_REQUEST_ACCEPTED', notice);
+      }
+    }
+    return toSuggestion(after);
   });
-  if (count === 0) throw notFound();
-  return toSuggestion(await prisma.suggestion.findUniqueOrThrow({ where: { id: suggestionId }, select: suggestionSelect(userId) }));
 }
