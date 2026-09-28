@@ -47,3 +47,12 @@
   border-top: 1px solid #4a5568;
   color: #cbd5e0;
 }
+
+.footer-dev {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.footer-dev a {
+  text-decoration: underline;
+}

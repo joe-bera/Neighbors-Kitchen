@@ -28,6 +28,11 @@ export default function Footer() {
       </div>
       <div className="footer-bottom">
         <p>&copy; {new Date().getFullYear()} Neighbors Kitchen. All rights reserved.</p>
+        {import.meta.env.DEV && (
+          <p className="footer-dev">
+            <Link to="/dev/mailbox">Practice mailbox</Link> (development only)
+          </p>
+        )}
       </div>
     </footer>
   )

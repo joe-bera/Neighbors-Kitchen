@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { GuestRoute, ProtectedRoute } from './components/auth/RouteGuards'
+import PageLoader from './components/common/PageLoader'
 import ScrollToTop from './components/common/ScrollToTop'
 import AppLayout from './components/layout/AppLayout'
 import AccountPage from './pages/AccountPage'
@@ -27,6 +28,9 @@ import OrderDetailPage from './pages/OrderDetailPage'
 import OrdersPage from './pages/OrdersPage'
 import SignupPage from './pages/SignupPage'
 import { refreshSession } from './services/api'
+
+// Development only: this route and its page are left out of the live site's bundle.
+const PracticeMailboxPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/PracticeMailboxPage')) : null
 
 function App() {
   // Restore the session from the refresh cookie when the app first loads.
@@ -70,6 +74,16 @@ function App() {
             <Route path="availability" element={<AvailabilityPage />} />
             <Route path="kitchen" element={<KitchenSettingsPage />} />
           </Route>
+          {PracticeMailboxPage && (
+            <Route
+              path="/dev/mailbox"
+              element={
+                <Suspense fallback={<PageLoader label="Loading the practice mailbox" />}>
+                  <PracticeMailboxPage />
+                </Suspense>
+              }
+            />
+          )}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
