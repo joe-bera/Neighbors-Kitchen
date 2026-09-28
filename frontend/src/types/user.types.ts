@@ -1,3 +1,5 @@
+import type { EmailSettings } from './notification.types';
+
 export type UserRole = 'CUSTOMER' | 'CHEF' | 'ADMIN';
 
 export interface User {
@@ -25,4 +27,5 @@ export interface ChefProfileSummary {
 
 export interface CurrentUser extends User {
   chefProfile: ChefProfileSummary | null;
+  emailSettings: EmailSettings;
 }

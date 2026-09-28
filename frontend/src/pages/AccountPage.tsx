@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import EmailSettingsCard from '../components/account/EmailSettingsCard'
 import PageLoader from '../components/common/PageLoader'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { fetchCurrentUser } from '../services/authService'
@@ -38,6 +39,12 @@ export default function AccountPage() {
       cancelled = true
     }
   }, [attempt])
+
+  // Email footers link to #email-settings: scroll there once the page has loaded.
+  const loaded = state.status === 'ready'
+  useEffect(() => {
+    if (loaded && location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView()
+  }, [loaded, location.hash])
 
   const retry = () => {
     setState({ status: 'loading' })
@@ -94,6 +101,8 @@ export default function AccountPage() {
             </div>
           </dl>
         </section>
+
+        <EmailSettingsCard initial={user.emailSettings} isChef={isChef} />
 
         {isChef && user.chefProfile && <KitchenCard kitchen={user.chefProfile} ownerFirstName={user.firstName} />}
 
