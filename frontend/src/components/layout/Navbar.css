@@ -27,6 +27,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-right: auto;
   font-size: 1.5rem;
   font-weight: 700;
 }
@@ -69,6 +70,7 @@
 
 .nav-toggle {
   display: none;
+  order: 3;
   align-items: center;
   justify-content: center;
   width: 44px;

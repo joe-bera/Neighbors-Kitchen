@@ -4,6 +4,7 @@ import { logout } from '../../services/authService'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { cartCount } from '../../utils/cart'
+import NotificationBell from '../notifications/NotificationBell'
 import './Navbar.css'
 
 interface NavbarProps {
@@ -34,6 +35,8 @@ export default function Navbar({ variant = 'solid' }: NavbarProps) {
         <span className="logo-icon" aria-hidden="true">🍳</span>
         <span className="logo-text">Neighbors Kitchen</span>
       </Link>
+
+      {status === 'authenticated' && <NotificationBell />}
 
       <button
         type="button"

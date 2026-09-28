@@ -22,6 +22,7 @@ import LoginPage from './pages/LoginPage'
 import MealDetailPage from './pages/MealDetailPage'
 import MealsPage from './pages/MealsPage'
 import NotFoundPage from './pages/NotFoundPage'
+import NotificationsPage from './pages/NotificationsPage'
 import OrderDetailPage from './pages/OrderDetailPage'
 import OrdersPage from './pages/OrdersPage'
 import SignupPage from './pages/SignupPage'
@@ -47,6 +48,7 @@ function App() {
           <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
           <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
           <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
           <Route path="/signup" element={<GuestRoute><SignupPage /></GuestRoute>} />
           <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
