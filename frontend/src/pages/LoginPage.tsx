@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
+import { useFlashMessage } from '../hooks/useFlashMessage'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { login } from '../services/authService'
 import { getApiError } from '../utils/apiError'
@@ -20,6 +21,7 @@ const DEMO_PASSWORD = 'Password123'
 
 export default function LoginPage() {
   usePageTitle('Log in')
+  const flash = useFlashMessage()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [formError, setFormError] = useState<string | null>(null)
@@ -51,6 +53,7 @@ export default function LoginPage() {
         <h1>Welcome back</h1>
         <p className="auth-subtitle">Log in to order meals or manage your kitchen.</p>
 
+        {flash && <div className="alert alert-success" role="status">{flash}</div>}
         {formError && (
           <div className="alert alert-error" role="alert">
             {formError}
@@ -85,6 +88,9 @@ export default function LoginPage() {
             />
             {errors.password && <p id="password-error" className="field-error">{errors.password.message}</p>}
           </div>
+          <p className="auth-forgot">
+            <Link to="/forgot-password" className="text-link">Forgot password?</Link>
+          </p>
 
           <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
             {isSubmitting ? 'Logging in...' : 'Log in'}

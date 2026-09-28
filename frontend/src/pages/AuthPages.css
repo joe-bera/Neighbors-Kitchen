@@ -99,3 +99,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.auth-forgot {
+  margin-top: -0.5rem;
+  text-align: right;
+  font-size: 0.9rem;
+}

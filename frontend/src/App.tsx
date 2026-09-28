@@ -18,6 +18,7 @@ import KitchenSetupPage from './pages/chef/KitchenSetupPage'
 import MealEditorPage from './pages/chef/MealEditorPage'
 import ChefProfilePage from './pages/ChefProfilePage'
 import ChefsPage from './pages/ChefsPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import MealDetailPage from './pages/MealDetailPage'
@@ -26,6 +27,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import NotificationsPage from './pages/NotificationsPage'
 import OrderDetailPage from './pages/OrderDetailPage'
 import OrdersPage from './pages/OrdersPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import SignupPage from './pages/SignupPage'
 import { refreshSession } from './services/api'
 
@@ -55,6 +57,8 @@ function App() {
           <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
           <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
           <Route path="/signup" element={<GuestRoute><SignupPage /></GuestRoute>} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
           <Route path="/chef/setup" element={<ProtectedRoute><KitchenSetupPage /></ProtectedRoute>} />
           <Route
