@@ -1,4 +1,5 @@
 import { afterAll, beforeEach } from 'vitest';
+import './loopbackServer.js';
 import { prisma } from '../src/lib/prisma.js';
 
 // Every test starts with empty tables.
