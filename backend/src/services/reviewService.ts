@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { AppError } from '../utils/errors.js';
+import { AppError, errorMessage } from '../utils/errors.js';
 import { CreateReviewInput } from '../validators/feedbackSchemas.js';
 import { chefDisplayName, orderableMealWhere, paginationMeta, visibleChefWhere } from './catalogShared.js';
 import { requireOwnKitchen } from './kitchenService.js';
@@ -178,21 +178,26 @@ export async function sendRateReminders(now: Date = new Date()): Promise<number>
 
   let sent = 0;
   for (const { id } of due) {
-    const reminded = await prisma.$transaction(async (tx) => {
-      // Only one helper can take the reminder. It is cleared whether or not it is sent.
-      const { count } = await tx.order.updateMany({ where: { id, rateReminderAt: { lte: now } }, data: { rateReminderAt: null } });
-      if (count === 0) return false;
-      const order = await tx.order.findUniqueOrThrow({
-        where: { id },
-        include: { ...orderNoticeInclude, reviews: { select: { mealId: true } } },
+    // One order that cannot be handled must not hold up the others; it is tried again on the next pass.
+    try {
+      const reminded = await prisma.$transaction(async (tx) => {
+        // Only one helper can take the reminder. It is cleared whether or not it is sent.
+        const { count } = await tx.order.updateMany({ where: { id, rateReminderAt: { lte: now } }, data: { rateReminderAt: null } });
+        if (count === 0) return false;
+        const order = await tx.order.findUniqueOrThrow({
+          where: { id },
+          include: { ...orderNoticeInclude, reviews: { select: { mealId: true } } },
+        });
+        const somethingUnrated = order.orderItems.some((item) => !order.reviews.some((rated) => rated.mealId === item.mealId));
+        if (!somethingUnrated) return false;
+        const customer = await tx.user.findUniqueOrThrow({ where: { id: order.customerId }, select: recipientSelect });
+        await notify(tx, customer, 'RATE_REMINDER', orderNoticeData(order));
+        return true;
       });
-      const somethingUnrated = order.orderItems.some((item) => !order.reviews.some((rated) => rated.mealId === item.mealId));
-      if (!somethingUnrated) return false;
-      const customer = await tx.user.findUniqueOrThrow({ where: { id: order.customerId }, select: recipientSelect });
-      await notify(tx, customer, 'RATE_REMINDER', orderNoticeData(order));
-      return true;
-    });
-    if (reminded) sent += 1;
+      if (reminded) sent += 1;
+    } catch (error) {
+      console.error(`Could not send the rate reminder for order ${id}:`, errorMessage(error));
+    }
   }
   return sent;
 }

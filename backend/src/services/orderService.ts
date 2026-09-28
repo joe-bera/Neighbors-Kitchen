@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { ChefProfile, OrderStatus, Prisma } from '@prisma/client';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
-import { AppError } from '../utils/errors.js';
+import { AppError, errorMessage } from '../utils/errors.js';
 import { PlaceOrderInput } from '../validators/orderSchemas.js';
 import { chefDisplayName, chefSummarySelect, kitchenTitle, orderableMealOwnWhere, toChefSummary, visibleChefWhere } from './catalogShared.js';
 import { distanceMiles, roundToTenth } from './geo.js';
@@ -416,23 +416,28 @@ export async function expireOverdueOrders(now: Date = new Date()): Promise<numbe
 
   let expired = 0;
   for (const { id } of overdue) {
-    const cancelled = await prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUniqueOrThrow({ where: { id }, include: orderNoticeInclude });
-      const reason = `${kitchenTitle(order.chef)} didn't confirm this order in time.`;
-      // Only while it is still waiting: the chef may have confirmed it a moment ago.
-      const { count } = await tx.order.updateMany({
-        where: { id, status: 'PENDING', confirmBy: { lte: now } },
-        data: { status: 'CANCELLED', cancelledAt: now, cancellationReason: reason },
+    // One order that cannot be handled must not hold up the others; it is tried again on the next pass.
+    try {
+      const cancelled = await prisma.$transaction(async (tx) => {
+        const order = await tx.order.findUniqueOrThrow({ where: { id }, include: orderNoticeInclude });
+        const reason = `${kitchenTitle(order.chef)} didn't confirm this order in time.`;
+        // Only while it is still waiting: the chef may have confirmed it a moment ago.
+        const { count } = await tx.order.updateMany({
+          where: { id, status: 'PENDING', confirmBy: { lte: now } },
+          data: { status: 'CANCELLED', cancelledAt: now, cancellationReason: reason },
+        });
+        if (count === 0) return false;
+        await tx.orderEvent.create({ data: { orderId: id, status: 'CANCELLED', note: reason } });
+        const parties = await orderParties(tx, order);
+        const notice = orderNoticeData(order, { reason });
+        await notify(tx, parties.customer, 'ORDER_EXPIRED', notice);
+        await notify(tx, parties.chef, 'CHEF_ORDER_EXPIRED', notice);
+        return true;
       });
-      if (count === 0) return false;
-      await tx.orderEvent.create({ data: { orderId: id, status: 'CANCELLED', note: reason } });
-      const parties = await orderParties(tx, order);
-      const notice = orderNoticeData(order, { reason });
-      await notify(tx, parties.customer, 'ORDER_EXPIRED', notice);
-      await notify(tx, parties.chef, 'CHEF_ORDER_EXPIRED', notice);
-      return true;
-    });
-    if (cancelled) expired += 1;
+      if (cancelled) expired += 1;
+    } catch (error) {
+      console.error(`Could not cancel overdue order ${id}:`, errorMessage(error));
+    }
   }
   return expired;
 }
@@ -448,19 +453,24 @@ export async function sendChefReminders(now: Date = new Date()): Promise<number>
 
   let sent = 0;
   for (const { id } of due) {
-    const reminded = await prisma.$transaction(async (tx) => {
-      // Only one helper can take the reminder.
-      const { count } = await tx.order.updateMany({
-        where: { id, status: 'PENDING', chefReminderAt: { lte: now } },
-        data: { chefReminderAt: null },
+    // One order that cannot be handled must not hold up the others; it is tried again on the next pass.
+    try {
+      const reminded = await prisma.$transaction(async (tx) => {
+        // Only one helper can take the reminder.
+        const { count } = await tx.order.updateMany({
+          where: { id, status: 'PENDING', chefReminderAt: { lte: now } },
+          data: { chefReminderAt: null },
+        });
+        if (count === 0) return false;
+        const order = await tx.order.findUniqueOrThrow({ where: { id }, include: orderNoticeInclude });
+        const { chef } = await orderParties(tx, order);
+        await notify(tx, chef, 'CONFIRM_REMINDER', orderNoticeData(order));
+        return true;
       });
-      if (count === 0) return false;
-      const order = await tx.order.findUniqueOrThrow({ where: { id }, include: orderNoticeInclude });
-      const { chef } = await orderParties(tx, order);
-      await notify(tx, chef, 'CONFIRM_REMINDER', orderNoticeData(order));
-      return true;
-    });
-    if (reminded) sent += 1;
+      if (reminded) sent += 1;
+    } catch (error) {
+      console.error(`Could not remind the chef about order ${id}:`, errorMessage(error));
+    }
   }
   return sent;
 }

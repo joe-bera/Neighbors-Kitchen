@@ -15,3 +15,8 @@ export class AppError extends Error {
     this.details = details;
   }
 }
+
+/** The message of anything thrown, for logs. */
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
