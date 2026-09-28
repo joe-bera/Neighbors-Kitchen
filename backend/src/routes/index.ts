@@ -1,6 +1,8 @@
 import { Request, Response, Router } from 'express';
+import { practiceMailboxEnabled } from '../services/notifications/mailer.js';
 import { authRoutes } from './authRoutes.js';
 import { chefRoutes, mealRoutes } from './catalogRoutes.js';
+import { devRoutes } from './devRoutes.js';
 import { reviewRoutes, suggestionRoutes } from './feedbackRoutes.js';
 import { myKitchenRoutes, uploadRoutes } from './kitchenRoutes.js';
 import { notificationRoutes } from './notificationRoutes.js';
@@ -27,3 +29,5 @@ apiRoutes.use('/orders', orderRoutes);
 apiRoutes.use('/reviews', reviewRoutes);
 apiRoutes.use('/suggestions', suggestionRoutes);
 apiRoutes.use('/notifications', notificationRoutes);
+// The practice mailbox shows everyone's emails, so it only exists outside production.
+if (practiceMailboxEnabled()) apiRoutes.use('/dev', devRoutes);
