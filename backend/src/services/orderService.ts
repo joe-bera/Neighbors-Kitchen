@@ -9,6 +9,8 @@ import { distanceMiles, roundToTenth } from './geo.js';
 import { geocodeAddress } from './geocoding.js';
 import { requireOwnKitchen } from './kitchenService.js';
 import { areaCenter } from './locationService.js';
+import { notify } from './notifications/notify.js';
+import { orderNoticeData, orderParties } from './notifications/orderNotices.js';
 import { orderReviewSelect } from './reviewService.js';
 import { isOrderSlot, localDayBounds } from './scheduling.js';
 import { zipCentroid, zipFromAddress } from './zipCodes.js';
@@ -34,6 +36,13 @@ const STATUS_WORDS: Record<OrderStatus, string> = {
   READY: 'ready',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
+};
+
+// What the customer hears when the chef moves their order along.
+const CUSTOMER_NOTICE: Partial<Record<OrderStatus, 'ORDER_CONFIRMED' | 'ORDER_PREPARING' | 'ORDER_READY'>> = {
+  CONFIRMED: 'ORDER_CONFIRMED',
+  PREPARING: 'ORDER_PREPARING',
+  READY: 'ORDER_READY',
 };
 
 const ORDER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no look-alikes such as 0/O or 1/I
@@ -233,7 +242,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput) {
     const deliveryFee = isDelivery ? chef.deliveryFee : new Prisma.Decimal(0);
     const platformFee = subtotal.mul(env.PLATFORM_FEE_PERCENT).div(100).toDecimalPlaces(2);
 
-    return tx.order.create({
+    const created = await tx.order.create({
       data: {
         orderNumber: newOrderNumber(),
         customerId: userId,
@@ -253,6 +262,11 @@ export async function placeOrder(userId: string, input: PlaceOrderInput) {
       },
       include: orderInclude,
     });
+    const parties = await orderParties(tx, created);
+    const notice = orderNoticeData(created);
+    await notify(tx, parties.chef, 'NEW_ORDER', notice);
+    await notify(tx, parties.customer, 'ORDER_PLACED', notice);
+    return created;
   });
 
   return customerView(order);
@@ -317,13 +331,21 @@ export async function advanceOrderStatus(userId: string, orderId: string, status
       const items = await tx.orderItem.findMany({ where: { orderId: order.id }, select: { mealId: true } });
       await tx.meal.updateMany({ where: { id: { in: items.map((item) => item.mealId) } }, data: { totalOrders: { increment: 1 } } });
     }
-    return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    const changed = await tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    const kind = CUSTOMER_NOTICE[status];
+    if (kind) {
+      const { customer } = await orderParties(tx, changed);
+      await notify(tx, customer, kind, orderNoticeData(changed));
+    }
+    return changed;
   });
   return chefView(updated);
 }
 
-async function cancelOrder(orderId: string, allowedStatuses: OrderStatus[], reason: string | null) {
-  const cancelled = await prisma.$transaction(async (tx) => {
+async function cancelOrder(orderId: string, allowedStatuses: OrderStatus[], reason: string | null, cancelledBy: 'customer' | 'chef') {
+  return prisma.$transaction(async (tx) => {
+    // Lock the order, so the status read here is still the status when it is cancelled.
+    const [current] = await tx.$queryRaw<{ status: OrderStatus }[]>`SELECT status FROM orders WHERE id = ${orderId} FOR UPDATE`;
     const { count } = await tx.order.updateMany({
       where: { id: orderId, status: { in: allowedStatuses } },
       data: { status: 'CANCELLED', cancelledAt: new Date(), cancellationReason: reason },
@@ -332,18 +354,27 @@ async function cancelOrder(orderId: string, allowedStatuses: OrderStatus[], reas
       throw new AppError(409, 'CANNOT_CANCEL', 'This order can no longer be cancelled. Please contact the chef.');
     }
     await tx.orderEvent.create({ data: { orderId, status: 'CANCELLED', note: reason } });
-    return tx.order.findUniqueOrThrow({ where: { id: orderId }, include: orderInclude });
+    const cancelled = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: orderInclude });
+
+    const parties = await orderParties(tx, cancelled);
+    if (cancelledBy === 'chef') {
+      // A chef who never confirmed the order declined it.
+      const notice = orderNoticeData(cancelled, { declined: current.status === 'PENDING' });
+      await notify(tx, parties.customer, 'ORDER_CANCELLED_BY_CHEF', notice);
+    } else {
+      await notify(tx, parties.chef, 'ORDER_CANCELLED_BY_CUSTOMER', orderNoticeData(cancelled));
+    }
+    return cancelled;
   });
-  return cancelled;
 }
 
 export async function cancelOrderAsCustomer(userId: string, orderId: string, reason: string | null) {
   const order = await prisma.order.findFirst({ where: { id: orderId, customerId: userId } });
   if (!order) throw new AppError(404, 'NOT_FOUND', 'We could not find that order');
-  return customerView(await cancelOrder(order.id, CUSTOMER_CANCELLABLE, reason));
+  return customerView(await cancelOrder(order.id, CUSTOMER_CANCELLABLE, reason, 'customer'));
 }
 
 export async function cancelOrderAsChef(userId: string, orderId: string, reason: string | null) {
   const order = await findChefOrder(userId, orderId);
-  return chefView(await cancelOrder(order.id, OPEN_STATUSES, reason));
+  return chefView(await cancelOrder(order.id, OPEN_STATUSES, reason, 'chef'));
 }

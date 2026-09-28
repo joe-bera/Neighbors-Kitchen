@@ -15,13 +15,18 @@ export function bearer(accessToken: string) {
   return { Authorization: `Bearer ${accessToken}` };
 }
 
-export async function signUp(_app: Express = app, role: 'CUSTOMER' | 'CHEF' = 'CUSTOMER') {
+export async function signUp(
+  _app: Express = app,
+  role: 'CUSTOMER' | 'CHEF' = 'CUSTOMER',
+  names: { firstName?: string; lastName?: string } = {},
+) {
   sequence += 1;
+  const email = `person${sequence}@example.com`;
   const res = await request(app).post(`${API}/auth/register`).send({
-    email: `person${sequence}@example.com`,
+    email,
     password: 'Tacos4ever',
-    firstName: 'Sam',
-    lastName: 'Rivera',
+    firstName: names.firstName ?? 'Sam',
+    lastName: names.lastName ?? 'Rivera',
     role,
   });
   if (res.status !== 201) throw new Error(`sign-up failed: ${JSON.stringify(res.body)}`);
@@ -30,6 +35,7 @@ export async function signUp(_app: Express = app, role: 'CUSTOMER' | 'CHEF' = 'C
     userId: res.body.data.user.id as string,
     accessToken: res.body.data.accessToken as string,
     refreshCookie,
+    email,
   };
 }
 
