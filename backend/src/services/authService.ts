@@ -208,20 +208,19 @@ function invalidResetLink() {
  * so nobody can use this to find out who has an account.
  */
 export async function requestPasswordReset(email: string, now: Date = new Date()): Promise<void> {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { ...recipientSelect, firstName: true, passwordResetExpires: true },
-  });
+  const user = await prisma.user.findUnique({ where: { email }, select: { ...recipientSelect, firstName: true } });
   if (!user || !user.isActive) return;
-  const lastSentAt = user.passwordResetExpires ? user.passwordResetExpires.getTime() - RESET_LINK_MINUTES * MINUTE_MS : null;
-  if (lastSentAt !== null && now.getTime() - lastSentAt < RESET_EMAIL_GAP_MINUTES * MINUTE_MS) return;
 
   const token = crypto.randomBytes(32).toString('base64url');
+  // A link sent less than RESET_EMAIL_GAP_MINUTES ago expires after this time. Checking it in the same
+  // update means requests that arrive together still send only one email.
+  const recentLinkExpiresAfter = new Date(now.getTime() + (RESET_LINK_MINUTES - RESET_EMAIL_GAP_MINUTES) * MINUTE_MS);
   await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: user.id },
+    const { count } = await tx.user.updateMany({
+      where: { id: user.id, OR: [{ passwordResetExpires: null }, { passwordResetExpires: { lte: recentLinkExpiresAfter } }] },
       data: { passwordResetToken: hashToken(token), passwordResetExpires: new Date(now.getTime() + RESET_LINK_MINUTES * MINUTE_MS) },
     });
+    if (count === 0) return;
     await notify(tx, user, 'PASSWORD_RESET', { firstName: user.firstName, token });
   });
 }

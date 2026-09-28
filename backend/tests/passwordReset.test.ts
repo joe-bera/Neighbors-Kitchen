@@ -82,6 +82,19 @@ describe('POST /auth/forgot-password', () => {
     expect((await reset(second, 'NewTacos5')).status).toBe(200);
   });
 
+  it('sends one email even when many requests arrive at once, and its link is the one that works', async () => {
+    const jane = await register();
+
+    const answers = await Promise.all(Array.from({ length: 10 }, () => forgot('jane@example.com')));
+
+    expect(answers.map((res) => res.status)).toEqual([200, 200, 200, 200, 200, 200, 200, 200, 200, 200]);
+    const resets = (await emailsFor(jane.userId)).filter((email) => email.kind === 'PASSWORD_RESET');
+    expect(resets).toHaveLength(1);
+    const token = (resets[0].data as { token: string }).token;
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: jane.userId } });
+    expect(user.passwordResetToken).toBe(crypto.createHash('sha256').update(token).digest('hex'));
+  });
+
   it('checks the email address', async () => {
     expect((await forgot('not-an-email')).status).toBe(422);
   });
