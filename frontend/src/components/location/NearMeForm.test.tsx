@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import NearMeForm from './NearMeForm'
 
@@ -10,7 +10,10 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition }, configurable: true })
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 function renderForm() {
   const onChoose = vi.fn()
@@ -58,6 +61,53 @@ describe('NearMeForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
 
     expect(screen.getByRole('alert').textContent).toBe('We could not get your location. Type your ZIP code instead.')
+    expect(onChoose).not.toHaveBeenCalled()
+  })
+
+  it('gives up after 15 seconds when the browser never answers, such as an ignored permission prompt', () => {
+    vi.useFakeTimers()
+    getCurrentPosition.mockImplementation(() => {})
+    renderForm()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    expect(screen.getByRole('button', { name: 'Finding you...' })).toHaveProperty('disabled', true)
+    act(() => {
+      vi.advanceTimersByTime(15_000)
+    })
+
+    expect(screen.getByRole('alert').textContent).toBe('We could not get your location. Type your ZIP code instead.')
+    expect(screen.getByRole('button', { name: 'Use my location' })).toHaveProperty('disabled', false)
+  })
+
+  it('ignores a location that arrives after giving up', () => {
+    vi.useFakeTimers()
+    let answer: PositionCallback = () => {}
+    getCurrentPosition.mockImplementation((found: PositionCallback) => {
+      answer = found
+    })
+    const onChoose = renderForm()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    act(() => {
+      vi.advanceTimersByTime(15_000)
+    })
+    act(() => answer({ coords: { latitude: 34.055216, longitude: -117.182488 } } as GeolocationPosition))
+
+    expect(onChoose).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when the answer comes after leaving the page', () => {
+    let answer: PositionCallback = () => {}
+    getCurrentPosition.mockImplementation((found: PositionCallback) => {
+      answer = found
+    })
+    const onChoose = vi.fn()
+    const { unmount } = render(<NearMeForm onChoose={onChoose} initialZip="" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    unmount()
+    answer({ coords: { latitude: 34.055216, longitude: -117.182488 } } as GeolocationPosition)
+
     expect(onChoose).not.toHaveBeenCalled()
   })
 })
