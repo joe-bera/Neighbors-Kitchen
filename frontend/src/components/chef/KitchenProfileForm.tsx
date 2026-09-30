@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import type { KitchenProfileInput, OwnKitchen } from '../../types/kitchen.types'
 import { getApiError } from '../../utils/apiError'
+import { radiusOptions } from '../../utils/deliveryRadius'
 
 /** "Mexican, Vegan" becomes ["Mexican", "Vegan"]. */
 const splitList = (value: string) =>
@@ -48,7 +49,6 @@ type KitchenField = keyof KitchenFormInput
 
 const FIELDS = Object.keys(kitchenFormSchema.shape) as KitchenField[]
 const FIELDS_WITH_HINTS = new Set<KitchenField>(['bio', 'specialties', 'certifications'])
-const RADIUS_OPTIONS = [2, 5, 10, 15, 25]
 
 function toFormValues(kitchen?: OwnKitchen): KitchenFormInput {
   return {
@@ -180,7 +180,7 @@ export default function KitchenProfileForm({ initialKitchen, submitLabel, submit
         <div className="field">
           <label className="field-label" htmlFor="serviceRadiusMiles">How far will you deliver?</label>
           <select {...fieldProps('serviceRadiusMiles')}>
-            {RADIUS_OPTIONS.map((miles) => (
+            {radiusOptions(initialKitchen?.serviceRadiusMiles).map((miles) => (
               <option key={miles} value={miles}>Within {miles} miles</option>
             ))}
           </select>
