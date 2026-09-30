@@ -57,6 +57,7 @@ Phase 8 is split in two: 8a (this document, a show-and-tell preview on the inter
 | Variable | Value |
 |---|---|
 | `NODE_ENV` | `production` |
+| `PORT` | `8080`, set explicitly so the domains point at a known port (added while planning) |
 | `PREVIEW_MODE` | `true` |
 | `FRONTEND_URL` | `https://neighborskitchen.app` |
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
@@ -68,7 +69,7 @@ Phase 8 is split in two: 8a (this document, a show-and-tell preview on the inter
 | `EMAIL_FROM` | `Neighbors Kitchen <no-reply@neighborskitchen.app>` |
 | `DEMO_PASSWORD` | chosen by the owner (at least 12 characters) and typed into Railway by the owner |
 
-Railway sets `PORT`. Everything else keeps its default (`GEOCODER=census`, `RATE_REMINDER_DELAY_MINUTES=120`, `JOBS_INTERVAL_MS=5000`, `PLATFORM_FEE_PERCENT=10`). Secrets live only in Railway, never in the repo or in chat.
+Everything else keeps its default (`GEOCODER=census`, `RATE_REMINDER_DELAY_MINUTES=120`, `JOBS_INTERVAL_MS=5000`, `PLATFORM_FEE_PERCENT=10`). Secrets live only in Railway, never in the repo or in chat.
 
 ### Packaging (`Dockerfile`, `.dockerignore`)
 
@@ -140,6 +141,7 @@ Production checks at start-up (`NODE_ENV=production`) stop the server with a cle
   - Styles allow inline values for Leaflet and React style attributes; scripts stay strict.
   - The website loads nothing from other sites except the OpenStreetMap tiles. Once the sample photos move into the repo, TheMealDB is gone.
 - **HSTS:** helmet's default stays. `.app` addresses are HTTPS-only in browsers anyway.
+- **Referrer-Policy:** `strict-origin-when-cross-origin` instead of helmet's `no-referrer`, because OpenStreetMap's tile policy asks websites to send a Referer. Other sites only ever see `https://neighborskitchen.app`, never a page path. Reset tokens sit after `#`, which browsers never send. (Added while planning, 2026-09-29.)
 
 ### Real email (Resend)
 
