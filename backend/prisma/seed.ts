@@ -1,23 +1,24 @@
-// Sample data for local development: demo chefs with menus, demo customers, past orders with
-// reviews, and dish requests with votes.
+// Sample data: demo chefs with menus, demo customers, past orders with reviews, and dish requests with votes.
 // Safe to run more than once - existing demo records are updated, not duplicated.
 //
-//   npm run db:seed
+//   npm run db:seed              load (or refresh) the samples
+//   npm run db:seed:preview      the preview site's deploy step: load them only if they are not there yet
 //
-// Every demo account uses the password below. Emails use the reserved .test domain,
-// so no real inbox can ever receive mail sent to them.
-// Meal photos are hosted by TheMealDB (https://www.themealdb.com) for development only.
+// It runs on this computer and on the preview site only (see src/services/sampleData.ts). Demo accounts
+// use Password123 here and the private DEMO_PASSWORD on the preview site. Emails use the reserved .test
+// domain, so no real inbox can ever receive mail sent to them.
 
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import { MealCategory, OrderStatus, Prisma, PrismaClient, SuggestionStatus, UserRole } from '@prisma/client';
+import { env } from '../src/config/env.js';
 import { approximateLocation, seededRandom } from '../src/services/geo.js';
 import { bellText } from '../src/services/notifications/bellText.js';
+import { DEVELOPMENT_DEMO_PASSWORD, sampleDataPlan } from '../src/services/sampleData.js';
 import { zipCentroid } from '../src/services/zipCodes.js';
 
 const prisma = new PrismaClient();
 
-const DEMO_PASSWORD = 'Password123';
 const photo = (file: string) => `https://www.themealdb.com/images/media/meals/${file}`;
 
 interface SeedMeal {
@@ -1021,7 +1022,15 @@ async function fillMissingAreas() {
 }
 
 async function main() {
-  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
+  const previewIfEmpty = process.argv.includes('--preview-if-empty');
+  const sampleDataExists = (await prisma.user.count({ where: { email: { endsWith: '@neighborskitchen.test' } } })) > 0;
+  const plan = sampleDataPlan(env, { previewIfEmpty, sampleDataExists });
+  if (plan.action === 'skip') {
+    console.log(plan.reason);
+    return;
+  }
+  if (plan.action === 'refuse') throw new Error(plan.reason);
+  const passwordHash = await bcrypt.hash(plan.password, 12);
 
   for (const customer of customers) {
     await upsertUser(customer, 'CUSTOMER', passwordHash);
@@ -1047,7 +1056,12 @@ async function main() {
   console.log(`Added ${pastOrders.length} past orders, ${reviewCount} reviews and ${suggestions.length} dish requests.`);
   console.log(`Gave the demo accounts ${demoNotices} bell items.`);
   console.log(`Placed ${otherKitchens} other kitchens on the map.`);
-  console.log(`Demo logins (password for all: ${DEMO_PASSWORD}):`);
+  // The preview site's password is private: never print it.
+  console.log(
+    plan.password === DEVELOPMENT_DEMO_PASSWORD
+      ? `Demo logins (password for all: ${DEVELOPMENT_DEMO_PASSWORD}):`
+      : 'Demo logins (password for all: the DEMO_PASSWORD setting):',
+  );
   console.log(`  Customer: ${customers[0].email}`);
   console.log(`  Chef:     ${chefs[0].email} (and kenji@, aisha@, tony@, grace@, priya@, linh@, sofia@)`);
 }
