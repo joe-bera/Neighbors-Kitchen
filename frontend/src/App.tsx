@@ -4,6 +4,7 @@ import { GuestRoute, ProtectedRoute } from './components/auth/RouteGuards'
 import PageLoader from './components/common/PageLoader'
 import ScrollToTop from './components/common/ScrollToTop'
 import AppLayout from './components/layout/AppLayout'
+import PreviewBanner from './components/layout/PreviewBanner'
 import AccountPage from './pages/AccountPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
@@ -43,6 +44,8 @@ function App() {
   return (
     <>
       <ScrollToTop />
+      {/* Above the routes, so the home page (which has its own layout) shows it too. */}
+      <PreviewBanner />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route element={<AppLayout />}>
