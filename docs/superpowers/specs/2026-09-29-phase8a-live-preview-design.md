@@ -82,6 +82,7 @@ Everything else keeps its default (`GEOCODER=census`, `RATE_REMINDER_DELAY_MINUT
   - `backend/package.json`
   - the pruned `backend/node_modules`, including the generated Prisma client
   - `backend/dist`
+  - `backend/src`: the seed runs from TypeScript with tsx and imports these sources (found in the dress rehearsal)
   - `backend/prisma`: schema, migrations, seed and sample photos
   - `backend/data`: the ZIP code list, which `zipCodes.ts` finds relative to the compiled code
   - `frontend/dist`

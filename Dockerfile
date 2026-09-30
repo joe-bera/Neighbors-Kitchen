@@ -21,6 +21,8 @@ WORKDIR /app/backend
 COPY --from=build /app/backend/package.json /app/backend/package-lock.json ./
 COPY --from=build /app/backend/node_modules ./node_modules
 COPY --from=build /app/backend/dist ./dist
+# The seed runs from TypeScript (tsx) in the pre-deploy step and imports these sources.
+COPY --from=build /app/backend/src ./src
 COPY --from=build /app/backend/prisma ./prisma
 COPY --from=build /app/backend/data ./data
 COPY --from=build /app/frontend/dist /app/frontend/dist
