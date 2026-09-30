@@ -9,17 +9,19 @@
 // domain, so no real inbox can ever receive mail sent to them.
 
 import 'dotenv/config';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import bcrypt from 'bcrypt';
 import { MealCategory, OrderStatus, Prisma, PrismaClient, SuggestionStatus, UserRole } from '@prisma/client';
 import { env } from '../src/config/env.js';
 import { approximateLocation, seededRandom } from '../src/services/geo.js';
 import { bellText } from '../src/services/notifications/bellText.js';
 import { DEVELOPMENT_DEMO_PASSWORD, sampleDataPlan } from '../src/services/sampleData.js';
+import { SAMPLE_PHOTOS_DIR, samplePhotoId, samplePhotoUrl } from '../src/services/samplePhotos.js';
 import { zipCentroid } from '../src/services/zipCodes.js';
 
 const prisma = new PrismaClient();
 
-const photo = (file: string) => `https://www.themealdb.com/images/media/meals/${file}`;
 
 interface SeedMeal {
   name: string;
@@ -31,7 +33,6 @@ interface SeedMeal {
   servings: number;
   prepTimeMinutes: number;
   maxOrdersPerDay: number;
-  imageUrl: string;
 }
 
 interface SeedChef {
@@ -88,7 +89,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 60,
         maxOrdersPerDay: 12,
-        imageUrl: photo('qtuwxu1468233098.jpg'),
       },
       {
         name: 'Smoky Chickpea Fajitas',
@@ -100,7 +100,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 30,
         maxOrdersPerDay: 15,
-        imageUrl: photo('tvtxpq1511464705.jpg'),
       },
       {
         name: 'Mexican Rice & Charro Beans',
@@ -112,7 +111,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 45,
         maxOrdersPerDay: 20,
-        imageUrl: photo('j8c1d51782772399.jpg'),
       },
       {
         name: 'Churros with Chocolate Sauce',
@@ -124,7 +122,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 25,
         maxOrdersPerDay: 20,
-        imageUrl: photo('erzs951763296201.jpg'),
       },
     ],
   },
@@ -157,7 +154,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 45,
         maxOrdersPerDay: 15,
-        imageUrl: photo('vwrpps1503068729.jpg'),
       },
       {
         name: 'Honey Teriyaki Salmon',
@@ -169,7 +165,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 35,
         maxOrdersPerDay: 10,
-        imageUrl: photo('xxyupu1468262513.jpg'),
       },
       {
         name: 'Homestyle Sushi Platter',
@@ -181,7 +176,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 50,
         maxOrdersPerDay: 8,
-        imageUrl: photo('g046bb1663960946.jpg'),
       },
       {
         name: 'Shoyu Ramen with Soft Egg',
@@ -193,7 +187,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 40,
         maxOrdersPerDay: 12,
-        imageUrl: photo('ip5xtp1769779958.jpg'),
       },
     ],
   },
@@ -226,7 +219,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 40,
         maxOrdersPerDay: 15,
-        imageUrl: photo('hcg6l91763596970.jpg'),
       },
       {
         name: 'Falafel Pita with Tahini',
@@ -238,7 +230,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 25,
         maxOrdersPerDay: 20,
-        imageUrl: photo('ae6clc1760524712.jpg'),
       },
       {
         name: 'Shakshuka',
@@ -250,7 +241,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 30,
         maxOrdersPerDay: 10,
-        imageUrl: photo('g373701551450225.jpg'),
       },
       {
         name: 'Hummus & Warm Pita',
@@ -262,7 +252,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 15,
         maxOrdersPerDay: 25,
-        imageUrl: photo('gpon5u1763801180.jpg'),
       },
       {
         name: 'Honey Pistachio Baklava',
@@ -274,7 +263,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 20,
         maxOrdersPerDay: 25,
-        imageUrl: photo('ytme8t1764111401.jpg'),
       },
     ],
   },
@@ -307,7 +295,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 90,
         maxOrdersPerDay: 10,
-        imageUrl: photo('wtsvxx1511296896.jpg'),
       },
       {
         name: 'Spaghetti alla Carbonara',
@@ -319,7 +306,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 25,
         maxOrdersPerDay: 15,
-        imageUrl: photo('llcbn01574260722.jpg'),
       },
       {
         name: 'Penne Arrabbiata',
@@ -331,7 +317,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 25,
         maxOrdersPerDay: 20,
-        imageUrl: photo('ustsqw1468250014.jpg'),
       },
       {
         name: 'Ricotta Cheesecake',
@@ -343,7 +328,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 20,
         maxOrdersPerDay: 16,
-        imageUrl: photo('swttys1511385853.jpg'),
       },
     ],
   },
@@ -376,7 +360,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 60,
         maxOrdersPerDay: 15,
-        imageUrl: photo('40r49m1763197022.jpg'),
       },
       {
         name: 'Skillet Pork Chops with Sweet Potatoes',
@@ -388,7 +371,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 45,
         maxOrdersPerDay: 10,
-        imageUrl: photo('h3ijwo1581013377.jpg'),
       },
       {
         name: 'Baked Mac and Cheese',
@@ -400,7 +382,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 45,
         maxOrdersPerDay: 20,
-        imageUrl: photo('kpiu4t1782242131.jpg'),
       },
       {
         name: 'Peach Cobbler',
@@ -412,7 +393,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 50,
         maxOrdersPerDay: 12,
-        imageUrl: photo('ssxvup1511387476.jpg'),
       },
     ],
   },
@@ -445,7 +425,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 40,
         maxOrdersPerDay: 15,
-        imageUrl: photo('xxpqsy1511452222.jpg'),
       },
       {
         name: 'Dal Fry with Basmati Rice',
@@ -457,7 +436,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 35,
         maxOrdersPerDay: 20,
-        imageUrl: photo('wuxrtu1483564410.jpg'),
       },
       {
         name: 'Lamb Biryani',
@@ -469,7 +447,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 90,
         maxOrdersPerDay: 8,
-        imageUrl: photo('xrttsx1487339558.jpg'),
       },
       {
         name: 'Rajma Kidney Bean Curry',
@@ -481,7 +458,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 45,
         maxOrdersPerDay: 15,
-        imageUrl: photo('sywrsu1511463066.jpg'),
       },
       {
         name: 'Mango Lassi',
@@ -493,7 +469,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 10,
         maxOrdersPerDay: 30,
-        imageUrl: photo('pjbaq11784731571.jpg'),
       },
     ],
   },
@@ -526,7 +501,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 30,
         maxOrdersPerDay: 15,
-        imageUrl: photo('pbzcrx1763765096.jpg'),
       },
       {
         name: 'Lemongrass Beef Noodles',
@@ -538,7 +512,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 45,
         maxOrdersPerDay: 12,
-        imageUrl: photo('ntafxw1763586291.jpg'),
       },
       {
         name: 'Tofu Banh Mi',
@@ -550,7 +523,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 20,
         maxOrdersPerDay: 20,
-        imageUrl: photo('sonirb1763782831.jpg'),
       },
       {
         name: 'Herb Noodle Salad Bowl',
@@ -562,7 +534,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 20,
         maxOrdersPerDay: 15,
-        imageUrl: photo('zry07j1763779321.jpg'),
       },
     ],
   },
@@ -595,7 +566,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 50,
         maxOrdersPerDay: 12,
-        imageUrl: photo('b66myb1683207208.jpg'),
       },
       {
         name: 'Tofu, Greens & Cashew Stir-Fry',
@@ -607,7 +577,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 30,
         maxOrdersPerDay: 15,
-        imageUrl: photo('minfsc1763766806.jpg'),
       },
       {
         name: 'Smoky Lentil Chili with Squash',
@@ -619,7 +588,6 @@ const chefs: SeedChef[] = [
         servings: 2,
         prepTimeMinutes: 60,
         maxOrdersPerDay: 15,
-        imageUrl: photo('uwxqwy1483389553.jpg'),
       },
       {
         name: 'Oatmeal Pancakes',
@@ -631,7 +599,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 20,
         maxOrdersPerDay: 15,
-        imageUrl: photo('c400ok1764439058.jpg'),
       },
       {
         name: 'Chocolate Avocado Mousse',
@@ -643,7 +610,6 @@ const chefs: SeedChef[] = [
         servings: 1,
         prepTimeMinutes: 15,
         maxOrdersPerDay: 20,
-        imageUrl: photo('uttuxy1511382180.jpg'),
       },
     ],
   },
@@ -787,11 +753,12 @@ async function seedChef(chef: SeedChef, passwordHash: string) {
     : await prisma.menu.create({ data: { chefId: chefProfile.id, name: menuName, description: menuDescription } });
 
   for (const meal of meals) {
+    const withPhoto = { ...meal, imageUrl: samplePhotoUrl(meal.name) };
     const existingMeal = await prisma.meal.findFirst({ where: { chefId: chefProfile.id, name: meal.name } });
     if (existingMeal) {
-      await prisma.meal.update({ where: { id: existingMeal.id }, data: { ...meal, menuId: menu.id, isAvailable: true } });
+      await prisma.meal.update({ where: { id: existingMeal.id }, data: { ...withPhoto, menuId: menu.id, isAvailable: true } });
     } else {
-      await prisma.meal.create({ data: { ...meal, menuId: menu.id, chefId: chefProfile.id } });
+      await prisma.meal.create({ data: { ...withPhoto, menuId: menu.id, chefId: chefProfile.id } });
     }
   }
   return meals.length;
@@ -1031,6 +998,11 @@ async function main() {
   }
   if (plan.action === 'refuse') throw new Error(plan.reason);
   const passwordHash = await bcrypt.hash(plan.password, 12);
+  const missingPhotos = chefs
+    .flatMap((chef) => chef.meals)
+    .filter((meal) => !existsSync(path.join(SAMPLE_PHOTOS_DIR, `${samplePhotoId(meal.name)}.webp`)))
+    .map((meal) => meal.name);
+  if (missingPhotos.length > 0) throw new Error(`Missing sample photos for: ${missingPhotos.join(', ')}`);
 
   for (const customer of customers) {
     await upsertUser(customer, 'CUSTOMER', passwordHash);

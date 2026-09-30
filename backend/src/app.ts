@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { env, isProduction } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { apiRoutes } from './routes/index.js';
+import { SAMPLE_PHOTOS_DIR } from './services/samplePhotos.js';
 import { contentSecurityDirectives, proxyCheck } from './web/security.js';
 import { noIndex, websiteRoutes, wwwRedirect } from './web/website.js';
 
@@ -82,6 +83,8 @@ export function createApp(options: AppOptions = appOptionsFromEnv()): Express {
 
   // Uploaded photos have random, never-reused names, so browsers may cache them for a long time.
   app.use('/uploads', express.static(env.UPLOAD_DIR, { index: false, immutable: true, maxAge: '30d' }));
+  // The sample meals' photos ship with the app (prisma/sample-photos); an uploaded photo with the same name would win.
+  app.use('/uploads/meals', express.static(SAMPLE_PHOTOS_DIR, { index: false, immutable: true, maxAge: '30d' }));
 
   app.use('/api/v1', apiRoutes);
 
