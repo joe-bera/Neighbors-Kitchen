@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { env, isProduction } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { apiRoutes } from './routes/index.js';
+import { contentSecurityDirectives, proxyCheck } from './web/security.js';
 import { noIndex, websiteRoutes, wwwRedirect } from './web/website.js';
 
 export interface AppOptions {
@@ -15,6 +16,8 @@ export interface AppOptions {
   publicUrl: string;
   /** The built website (frontend/dist). Set in production, where the API hands out the website too. */
   websiteDir?: string;
+  /** Proxies in front of the app (1 on Railway), so rate limits see each visitor's own address. */
+  trustProxyHops?: number;
 }
 
 /** The options for the real server, from the settings. */
@@ -23,16 +26,28 @@ export function appOptionsFromEnv(): AppOptions {
     preview: env.PREVIEW_MODE,
     publicUrl: env.FRONTEND_URL,
     websiteDir: isProduction ? env.WEB_DIST_DIR : undefined,
+    trustProxyHops: env.TRUST_PROXY_HOPS,
   };
 }
 
 export function createApp(options: AppOptions = appOptionsFromEnv()): Express {
   const app = express();
 
+  // Behind Railway's proxy the visitor's own address arrives in X-Forwarded-For.
+  if (options.trustProxyHops) {
+    app.set('trust proxy', options.trustProxyHops);
+    app.use(proxyCheck());
+  }
   if (options.websiteDir) app.use(wwwRedirect(options.publicUrl));
 
   // Security middleware
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: { directives: contentSecurityDirectives(options.publicUrl) },
+      // OpenStreetMap's tile policy asks for a Referer; other sites only ever see our bare address.
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    }),
+  );
   app.use(cors({
     origin: env.FRONTEND_URL,
     credentials: true,
