@@ -90,6 +90,7 @@ enum EmailStatus {
   SENDING // being sent right now
   SENT
   FAILED  // gave up
+  SKIPPED // a made-up address (the sample accounts), never handed to a real email service
 }
 
 model User {

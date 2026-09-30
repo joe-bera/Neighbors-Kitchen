@@ -1,9 +1,10 @@
 import { Prisma } from '@prisma/client';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../src/lib/prisma.js';
-import { deliverDueEmails } from '../src/services/notifications/emailDelivery.js';
+import { cleanSubject, deliverDueEmails } from '../src/services/notifications/emailDelivery.js';
 import { EmailTransport, OutgoingEmail } from '../src/services/notifications/mailer.js';
 import { sampleOrder } from './noticeFixtures.js';
+import { isReservedAddress } from '../src/services/notifications/addresses.js';
 
 const MINUTE = 60 * 1000;
 const NOW = new Date('2026-09-29T20:00:00.000Z');
@@ -48,6 +49,14 @@ async function queueEmail(overrides: Partial<Prisma.EmailUncheckedCreateInput> =
 const reload = (id: string) => prisma.email.findUniqueOrThrow({ where: { id } });
 
 describe('deliverDueEmails', () => {
+  // Failed sends are logged; keep the test output quiet.
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('writes and sends due emails, keeping them for the practice mailbox', async () => {
     const email = await queueEmail();
     const { sent, transport } = recordingTransport();
@@ -132,7 +141,7 @@ describe('deliverDueEmails', () => {
   });
 
   it('erases a password link once a real email service has sent it', async () => {
-    const email = await queueEmail({ kind: 'PASSWORD_RESET', data: { firstName: 'Dana', token: 'secret-token-123' } });
+    const email = await queueEmail({ toAddress: 'dana@nk-sample.com', kind: 'PASSWORD_RESET', data: { firstName: 'Dana', token: 'secret-token-123' } });
     const { sent, transport } = recordingTransport(false);
 
     await deliverDueEmails(NOW, transport);
@@ -153,5 +162,89 @@ describe('deliverDueEmails', () => {
     await deliverDueEmails(NOW, transport);
 
     expect((await reload(email.id)).textBody).toContain('secret-token-123');
+  });
+
+  it("never hands the sample accounts' made-up addresses to a real email service", async () => {
+    const email = await queueEmail({ toAddress: 'maria@neighborskitchen.test' });
+    const { sent, transport } = recordingTransport(false);
+
+    expect(await deliverDueEmails(NOW, transport)).toEqual({ sent: 0, failed: 0 });
+
+    expect(sent).toEqual([]);
+    expect(await reload(email.id)).toMatchObject({ status: 'SKIPPED', attempts: 1, lastError: 'Not sent: example address', sentAt: null });
+  });
+
+  it('erases the link of a skipped password email', async () => {
+    const email = await queueEmail({ toAddress: 'maria@neighborskitchen.test', kind: 'PASSWORD_RESET', data: { firstName: 'Maria', token: 'secret-token-123' } });
+    const { transport } = recordingTransport(false);
+
+    await deliverDueEmails(NOW, transport);
+
+    expect(await reload(email.id)).toMatchObject({ status: 'SKIPPED', data: { firstName: 'Maria', token: null } });
+  });
+
+  it('still emails real addresses that only look like test ones', async () => {
+    for (const toAddress of ['jo@testing.com', 'sam@example.co', 'amy@mail.test.com']) await queueEmail({ toAddress });
+    const { sent, transport } = recordingTransport(false);
+
+    await deliverDueEmails(NOW, transport);
+
+    expect(sent.map((email) => email.to).sort()).toEqual(['amy@mail.test.com', 'jo@testing.com', 'sam@example.co']);
+  });
+
+  it('keeps line breaks out of subjects, and keeps emoji', async () => {
+    const email = await queueEmail({ toAddress: 'dana@nk-sample.com', data: { ...sampleOrder, kitchenName: "Abuela's\r\nTable 🌮" } as unknown as Prisma.InputJsonValue });
+    const { sent, transport } = recordingTransport(false);
+
+    await deliverDueEmails(NOW, transport);
+
+    expect(sent[0].subject).toBe("Abuela's Table 🌮 confirmed your order NK-7QX4PD");
+    expect((await reload(email.id)).subject).toBe("Abuela's Table 🌮 confirmed your order NK-7QX4PD");
+  });
+
+  it('sends a retry with the same id, so the email service never delivers it twice', async () => {
+    const email = await queueEmail({ toAddress: 'dana@nk-sample.com' });
+    const ids: string[] = [];
+    const flaky: EmailTransport = {
+      keepsCopies: false,
+      send: async (outgoing) => {
+        ids.push(outgoing.id);
+        if (ids.length === 1) throw new Error('The operation was aborted due to timeout');
+      },
+    };
+
+    await deliverDueEmails(NOW, flaky);
+    await deliverDueEmails(new Date(NOW.getTime() + MINUTE), flaky);
+
+    expect(ids).toEqual([email.id, email.id]);
+    expect((await reload(email.id)).status).toBe('SENT');
+  });
+
+  it('logs a failed send without the address', async () => {
+    const email = await queueEmail();
+
+    await deliverDueEmails(NOW, brokenTransport);
+
+    expect(vi.mocked(console.warn)).toHaveBeenCalledWith(`Email ${email.id} (ORDER_CONFIRMED) was not sent: service unavailable (will try again)`);
+  });
+});
+
+describe('isReservedAddress', () => {
+  it('knows addresses that can never receive mail', () => {
+    for (const address of ['maria@neighborskitchen.test', 'dana@example.com', 'x@mail.example.org', 'DANA@EXAMPLE.NET', 'a@b.example', 'a@b.invalid', 'root@localhost']) {
+      expect(isReservedAddress(address)).toBe(true);
+    }
+  });
+
+  it('lets every other address through', () => {
+    for (const address of ['jo@testing.com', 'sam@example.co', 'amy@mail.test.com', 'dana@notexample.com', 'kim@gmail.com']) {
+      expect(isReservedAddress(address)).toBe(false);
+    }
+  });
+});
+
+describe('cleanSubject', () => {
+  it('turns control characters into single spaces', () => {
+    expect(cleanSubject('New order\r\nBcc: someone\t\tnow ')).toBe('New order Bcc: someone now');
   });
 });

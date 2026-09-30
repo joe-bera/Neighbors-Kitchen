@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { env } from '../../config/env.js';
 import { prisma } from '../../lib/prisma.js';
+import { isReservedAddress } from './addresses.js';
 import { RenderedEmail, renderEmail } from './emailTemplates.js';
 import { EmailTransport } from './mailer.js';
 
@@ -15,8 +16,17 @@ const RETRY_DELAYS_MINUTES = [1, 5, 30, 120];
 // An email in SENDING for longer than this was being sent when the server stopped.
 const STUCK_AFTER_MS = 10 * MINUTE_MS;
 const REMOVED = '(removed after sending)';
+const SKIPPED_NOTE = 'Not sent: example address';
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/** Line breaks and other control characters never go into a subject line. */
+export function cleanSubject(subject: string): string {
+  return subject.replace(/\p{Cc}+/gu, ' ').replace(/ {2,}/g, ' ').trim();
+}
+
+/** A password email's data without its working link. */
+const withoutToken = (data: Prisma.JsonValue) => ({ ...(data as Prisma.JsonObject), token: null }) as Prisma.InputJsonObject;
 
 export async function deliverDueEmails(now: Date, transport: EmailTransport): Promise<{ sent: number; failed: number }> {
   await prisma.email.updateMany({
@@ -42,6 +52,15 @@ export async function deliverDueEmails(now: Date, transport: EmailTransport): Pr
     if (count === 0) continue;
     const email = await prisma.email.findUniqueOrThrow({ where: { id } });
 
+    // The sample accounts' made-up addresses never go to a real email service.
+    if (!transport.keepsCopies && isReservedAddress(email.toAddress)) {
+      await prisma.email.update({
+        where: { id },
+        data: { status: 'SKIPPED', lastError: SKIPPED_NOTE, ...(email.kind === 'PASSWORD_RESET' && { data: withoutToken(email.data) }) },
+      });
+      continue;
+    }
+
     let written: RenderedEmail;
     try {
       written = renderEmail(email.kind, email.data);
@@ -51,12 +70,14 @@ export async function deliverDueEmails(now: Date, transport: EmailTransport): Pr
       failed += 1;
       continue;
     }
-    const copy = { subject: written.subject, html: written.html, textBody: written.text };
+    const subject = cleanSubject(written.subject);
+    const copy = { subject, html: written.html, textBody: written.text };
 
     try {
-      await transport.send({ id, to: email.toAddress, from: env.EMAIL_FROM, ...written });
+      await transport.send({ id, to: email.toAddress, from: env.EMAIL_FROM, subject, html: written.html, text: written.text });
     } catch (error) {
       const retry = email.attempts < MAX_ATTEMPTS;
+      console.warn(`Email ${id} (${email.kind}) was not sent: ${messageOf(error)}${retry ? ' (will try again)' : ' (gave up)'}`);
       await prisma.email.update({
         where: { id },
         data: {
@@ -82,7 +103,7 @@ export async function deliverDueEmails(now: Date, transport: EmailTransport): Pr
         ...(erase && {
           html: REMOVED,
           textBody: REMOVED,
-          data: { ...(email.data as Prisma.JsonObject), token: null } as Prisma.InputJsonObject,
+          data: withoutToken(email.data),
         }),
       },
     });
