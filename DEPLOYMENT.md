@@ -16,7 +16,7 @@ Design: `docs/superpowers/specs/2026-09-29-phase8a-live-preview-design.md`.
 
 1. Work happens on a branch and is merged into `main` through a pull request.
 2. Railway builds the Docker image from the new commit on `main`.
-3. The pre-deploy command runs `npm run db:migrate:deploy` (database changes), then `npm run db:seed:preview`, which loads the sample data the first time only.
+3. The pre-deploy command (`npm run db:predeploy`) runs `npm run db:migrate:deploy` (database changes), then `npm run db:seed:preview`, which loads the sample data the first time only.
 4. The new version starts. Once `/health` answers, Railway switches visitors to it and stops the old one (which finishes its current work first). Because of the photo volume, the site pauses for up to about a minute.
 
 If the build or the pre-deploy command fails, the old version keeps running.

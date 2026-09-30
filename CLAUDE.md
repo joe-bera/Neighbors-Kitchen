@@ -87,7 +87,7 @@ Key conventions already in place:
   - **Headers.** Helmet's CSP allows only our files plus `https://tile.openstreetmap.org`; `Referrer-Policy` is `strict-origin-when-cross-origin`, because OpenStreetMap's tiles need a Referer.
   - **Email.** `EMAIL_TRANSPORT=resend` uses `resendTransport` (10 s limit, `Idempotency-Key` = email id). Real transports mark reserved addresses (`isReservedAddress`) `SKIPPED`, and subjects go through `cleanSubject`.
   - **Reset links.** They put the token after `#`, and the reset endpoint clears the refresh cookie.
-  - **Sample data.** It loads only through `sampleDataPlan()`: never on a live site unless it is the preview with `DEMO_PASSWORD` of at least 12 characters. `npm run db:seed:preview` loads it once (Railway's pre-deploy).
+  - **Sample data.** It loads only through `sampleDataPlan()`: never on a live site unless it is the preview with `DEMO_PASSWORD` of at least 12 characters. `npm run db:seed:preview` loads it once. Railway's pre-deploy runs `npm run db:predeploy` (migrations, then that); keep it a single npm script, because Railway may start it without a shell (`tests/predeploy.test.ts`).
   - **Sample photos.** They live in `backend/prisma/sample-photos/<samplePhotoId(name)>.webp` (credits in `CREDITS.md`) and are served at `/uploads/meals/` after `UPLOAD_DIR`.
   - **Stopping.** SIGTERM stops the helper after its pass, lets requests finish (25 s), then disconnects (`lib/shutdown.ts`).
 
