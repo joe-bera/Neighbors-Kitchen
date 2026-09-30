@@ -39,6 +39,15 @@ export function searchPlaceParams(place: SearchPlace | null): Record<string, str
   return { near: null, lat: String(place.latitude), lng: String(place.longitude) }
 }
 
+/**
+ * Page-address changes for a newly chosen place. The first search starts within DEFAULT_MAX_DISTANCE; a new
+ * place keeps the distance already chosen, including "Any distance" (no maxDistance at all).
+ */
+export function choosePlaceParams(next: SearchPlace, previous: SearchPlace | null, maxDistance: string): Record<string, string | null> {
+  const distance = maxDistance || (previous ? null : String(DEFAULT_MAX_DISTANCE))
+  return { ...searchPlaceParams(next), maxDistance: distance }
+}
+
 export function describePlace(place: SearchPlace): string {
   return place.kind === 'zip' ? `near ${place.zip}` : 'near you'
 }

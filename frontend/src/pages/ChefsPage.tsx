@@ -10,7 +10,7 @@ import { useAsyncData } from '../hooks/useAsyncData'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { fetchChefMap, fetchChefs, fetchMealFilters } from '../services/catalogService'
 import {
-  DEFAULT_MAX_DISTANCE,
+  choosePlaceParams,
   describePlace,
   DISTANCE_OPTIONS,
   readSearchPlace,
@@ -38,8 +38,7 @@ export default function ChefsPage() {
 
   const update = (changes: Record<string, string | null>) => setSearchParams(withUpdatedParams(searchParams, changes))
   const clearFilters = () => setSearchParams(showMap ? new URLSearchParams({ view: 'map' }) : new URLSearchParams())
-  const choosePlace = (next: SearchPlace) =>
-    update({ ...searchPlaceParams(next), maxDistance: maxDistance || String(DEFAULT_MAX_DISTANCE) })
+  const choosePlace = (next: SearchPlace) => update(choosePlaceParams(next, place, maxDistance))
   const goToPage = (page: number) => {
     update({ page: String(page) })
     window.scrollTo({ top: 0 })

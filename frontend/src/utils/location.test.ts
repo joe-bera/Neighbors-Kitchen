@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   boundsAround,
+  choosePlaceParams,
   describePlace,
   formatDistance,
   normalizeZip,
@@ -129,5 +130,22 @@ describe('rememberZip and recallZip', () => {
 
     expect(() => rememberZip('92373')).not.toThrow()
     expect(recallZip()).toBe('')
+  })
+})
+
+describe('choosePlaceParams', () => {
+  const zip = { kind: 'zip', zip: '92262' } as const
+  const here = { kind: 'here', latitude: 34.06, longitude: -117.18 } as const
+
+  it('starts the first search within 25 miles', () => {
+    expect(choosePlaceParams(zip, null, '')).toEqual({ near: '92262', lat: null, lng: null, maxDistance: '25' })
+  })
+
+  it('keeps the chosen distance for a new place', () => {
+    expect(choosePlaceParams(zip, here, '10')).toEqual({ near: '92262', lat: null, lng: null, maxDistance: '10' })
+  })
+
+  it('keeps "Any distance" for a new place', () => {
+    expect(choosePlaceParams(here, zip, '')).toEqual({ near: null, lat: '34.06', lng: '-117.18', maxDistance: null })
   })
 })
