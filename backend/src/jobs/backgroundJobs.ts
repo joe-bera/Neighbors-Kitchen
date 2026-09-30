@@ -23,27 +23,39 @@ export async function runBackgroundTasks(tasks: BackgroundTask[], now: Date = ne
   }
 }
 
-/** Starts the helper. The next pass is scheduled when the current one finishes, so passes never overlap. */
-export function startBackgroundJobs(): () => void {
+/** The timed tasks and the email sender, in the order each pass runs them. */
+function defaultTasks(): BackgroundTask[] {
   const transport = transportFromEnv();
-  const tasks: BackgroundTask[] = [
+  return [
     // Cancel first, so an order that ran out of time gets no reminder in the same pass.
     { name: 'cancel unconfirmed orders', run: expireOverdueOrders },
     { name: 'chef reminders', run: sendChefReminders },
     { name: 'rate reminders', run: sendRateReminders },
     { name: 'send emails', run: (now) => deliverDueEmails(now, transport) },
   ];
+}
 
+/**
+ * Starts the helper. The next pass is scheduled when the current one finishes, so passes never overlap.
+ * Returns a stop function that resolves once a pass in progress has finished.
+ */
+export function startBackgroundJobs({
+  tasks = defaultTasks(),
+  intervalMs = env.JOBS_INTERVAL_MS,
+}: { tasks?: BackgroundTask[]; intervalMs?: number } = {}): () => Promise<void> {
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
-  const pass = async () => {
-    await runBackgroundTasks(tasks);
-    if (!stopped) timer = setTimeout(pass, env.JOBS_INTERVAL_MS);
+  let running: Promise<void> = Promise.resolve();
+  const pass = () => {
+    running = runBackgroundTasks(tasks).then(() => {
+      if (!stopped) timer = setTimeout(pass, intervalMs);
+    });
   };
-  timer = setTimeout(pass, env.JOBS_INTERVAL_MS);
+  timer = setTimeout(pass, intervalMs);
 
-  return () => {
+  return async () => {
     stopped = true;
     clearTimeout(timer);
+    await running;
   };
 }
