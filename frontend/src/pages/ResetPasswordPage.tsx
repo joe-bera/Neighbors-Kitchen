@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { resetPassword } from '../services/accountService'
-import { useAuthStore } from '../store/authStore'
+import { forgetSession } from '../services/authService'
 import { getApiError } from '../utils/apiError'
 import './AuthPages.css'
 
@@ -52,8 +52,8 @@ export default function ResetPasswordPage() {
     setFormError(null)
     try {
       await resetPassword(token, password)
-      // The server logged out every session; forget this one too.
-      useAuthStore.getState().clearSession()
+      // The server logged out every session; forget this one (and its cart) too.
+      forgetSession()
       navigate('/login', { replace: true, state: { message: 'Your password was changed. Log in with your new password.' } })
     } catch (error) {
       const apiError = getApiError(error)

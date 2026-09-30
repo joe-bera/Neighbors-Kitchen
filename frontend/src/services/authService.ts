@@ -31,13 +31,18 @@ export async function login(input: LoginInput): Promise<User> {
   return data.data.user
 }
 
+/** Forgets the signed-in person on this device: the session and the cart (the bell count follows the session). */
+export function forgetSession(): void {
+  useAuthStore.getState().clearSession()
+  // Do not leave a cart behind for the next person on a shared device.
+  useCartStore.getState().clear()
+}
+
 export async function logout(): Promise<void> {
   try {
     await api.post('/auth/logout')
   } finally {
-    useAuthStore.getState().clearSession()
-    // Do not leave a cart behind for the next person on a shared device.
-    useCartStore.getState().clear()
+    forgetSession()
   }
 }
 

@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resetPassword } from '../services/accountService'
+import { useAuthStore } from '../store/authStore'
+import { useCartStore } from '../store/cartStore'
 import ResetPasswordPage from './ResetPasswordPage'
 
 vi.mock('../services/accountService', () => ({ resetPassword: vi.fn() }))
@@ -54,6 +56,33 @@ afterEach(() => {
 })
 
 describe('ResetPasswordPage', () => {
+  it("forgets this device's session and cart once the password is saved", async () => {
+    reset.mockResolvedValue(undefined)
+    useAuthStore.setState({
+      status: 'authenticated',
+      accessToken: 'token',
+      user: {
+        id: 'user-1',
+        email: 'chris@example.com',
+        role: 'CUSTOMER',
+        firstName: 'Chris',
+        lastName: 'Walker',
+        phone: null,
+        profilePhotoUrl: null,
+        emailVerified: false,
+        createdAt: '2026-09-01T00:00:00.000Z',
+      },
+    })
+    useCartStore.getState().add({ id: 'chef-1', name: "Abuela's Table" }, { mealId: 'meal-1', name: 'Churros', price: 6, imageUrl: null }, 2)
+    renderAt('/reset-password#token=abc123')
+
+    submit('Tacos5ever', 'Tacos5ever')
+
+    await screen.findByText('Login page: Your password was changed. Log in with your new password.')
+    expect(useAuthStore.getState().status).toBe('anonymous')
+    expect(useCartStore.getState().items).toEqual([])
+  })
+
   it('reads the token after the # in new emails', async () => {
     reset.mockResolvedValue(undefined)
     renderAt('/reset-password#token=abc123')
