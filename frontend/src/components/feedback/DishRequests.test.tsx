@@ -62,10 +62,24 @@ beforeEach(() => {
   vi.mocked(voteForSuggestion).mockReset()
   vi.mocked(removeSuggestionVote).mockReset()
   useAuthStore.setState({ status: 'anonymous', accessToken: null, user: null })
+  // jsdom has no scrolling.
+  Element.prototype.scrollIntoView = vi.fn()
 })
 afterEach(cleanup)
 
 describe('DishRequests', () => {
+  it('keeps the place in the page when sending a visitor to log in', async () => {
+    vi.mocked(fetchChefSuggestions).mockResolvedValue([])
+
+    render(
+      <MemoryRouter initialEntries={['/chefs/chef-1#requests-heading']}>
+        <DishRequests chefId="chef-1" kitchenName="Abuela's Table" isOwnKitchen={false} />
+      </MemoryRouter>,
+    )
+
+    expect((await screen.findByRole('link', { name: 'Log in' })).getAttribute('href')).toBe('/login?redirect=%2Fchefs%2Fchef-1%23requests-heading')
+  })
+
   it('lets a signed-in neighbor vote for a dish and take the vote back', async () => {
     signIn()
     vi.mocked(fetchChefSuggestions).mockResolvedValue([suggestion()])

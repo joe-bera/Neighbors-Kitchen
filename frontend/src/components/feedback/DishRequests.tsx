@@ -34,7 +34,7 @@ export default function DishRequests({ chefId, kitchenName, isOwnKitchen }: Dish
   const [voteError, setVoteError] = useState<string | null>(null)
 
   const canTakePart = authStatus === 'authenticated' && !isOwnKitchen
-  const loginLink = `/login?redirect=${encodeURIComponent(location.pathname + location.search)}`
+  const loginLink = `/login?redirect=${encodeURIComponent(location.pathname + location.search + location.hash)}`
   // New requests stay on top where their author can see them; votes do not reorder the list while reading.
   const loaded = (requests.data ?? []).filter((item) => !added.some((mine) => mine.id === item.id))
   const items = [...added, ...loaded].map((item) => changed[item.id] ?? item)

@@ -20,7 +20,8 @@ export function ProtectedRoute({ children, roles, otherRolesRedirectTo = '/' }: 
 
   if (status === 'loading') return <PageLoader />
   if (status === 'anonymous') {
-    const redirect = encodeURIComponent(location.pathname + location.search)
+    // Keep the #section too: email links such as /account#email-settings land where they point after logging in.
+    const redirect = encodeURIComponent(location.pathname + location.search + location.hash)
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }
   if (roles && user && !roles.includes(user.role)) return <Navigate to={otherRolesRedirectTo} replace />
