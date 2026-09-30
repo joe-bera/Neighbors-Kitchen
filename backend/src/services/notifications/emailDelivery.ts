@@ -54,7 +54,7 @@ export async function deliverDueEmails(now: Date, transport: EmailTransport): Pr
     const copy = { subject: written.subject, html: written.html, textBody: written.text };
 
     try {
-      await transport.send({ to: email.toAddress, from: env.EMAIL_FROM, ...written });
+      await transport.send({ id, to: email.toAddress, from: env.EMAIL_FROM, ...written });
     } catch (error) {
       const retry = email.attempts < MAX_ATTEMPTS;
       await prisma.email.update({
