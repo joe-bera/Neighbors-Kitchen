@@ -48,7 +48,9 @@ export function wwwRedirect(publicUrl: string): RequestHandler {
   const wwwHost = `www.${site.hostname}`;
   return (req, res, next) => {
     if (req.hostname !== wwwHost) return next();
-    res.redirect(301, new URL(req.originalUrl, site).toString());
+    // Glued on, never resolved: resolving would turn "//other.site/page" into another site's address.
+    const page = req.originalUrl.startsWith('/') ? req.originalUrl : '/';
+    res.redirect(301, site.origin + page);
   };
 }
 

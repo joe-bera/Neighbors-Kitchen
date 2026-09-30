@@ -1,4 +1,7 @@
+import { once } from 'node:events';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import request from 'supertest';
@@ -20,6 +23,25 @@ beforeAll(() => {
 
 const site = (options: Partial<AppOptions> = {}) =>
   createApp({ preview: false, publicUrl: 'https://neighborskitchen.app', websiteDir, ...options });
+
+/** Sends the request line exactly as given: supertest would tidy "/\" into "//" first. */
+async function rawGet(app: ReturnType<typeof createApp>, address: string, host: string) {
+  const server = app.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const { port } = server.address() as AddressInfo;
+    return await new Promise<{ status?: number; location?: string }>((resolve, reject) => {
+      http
+        .get({ host: '127.0.0.1', port, path: address, headers: { host } }, (res) => {
+          res.resume();
+          resolve({ status: res.statusCode, location: res.headers.location });
+        })
+        .on('error', reject);
+    });
+  } finally {
+    server.close();
+  }
+}
 
 describe('the website in production', () => {
   it('answers every page address with the app, never cached', async () => {
@@ -78,6 +100,17 @@ describe('the website in production', () => {
 
     expect(res.status).toBe(301);
     expect(res.get('X-Powered-By')).toBeUndefined();
+  });
+
+  it('never sends www visitors to another site, whatever the page address looks like', async () => {
+    const cases = [
+      ['//evil.example/login', 'https://neighborskitchen.app//evil.example/login'],
+      ['/\\evil.example/login', 'https://neighborskitchen.app/\\evil.example/login'],
+      ['http://evil.example/login', 'https://neighborskitchen.app/'],
+    ];
+    for (const [address, location] of cases) {
+      expect(await rawGet(site(), address, 'www.neighborskitchen.app')).toEqual({ status: 301, location });
+    }
   });
 });
 
