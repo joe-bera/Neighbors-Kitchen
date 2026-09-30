@@ -44,6 +44,12 @@ enum MealCategory {
   SNACK
 }
 
+// How a kitchen was placed on the map.
+enum LocationPrecision {
+  ADDRESS  // its street address was found
+  ZIP_CODE // only the middle of its ZIP code
+}
+
 enum SuggestionStatus {
   PENDING
   CONSIDERING
@@ -57,6 +63,36 @@ enum Priority {
   HIGH
 }
 
+// What a notice is about: one list for the bell and for email.
+// Design: docs/superpowers/specs/2026-09-27-phase7b-notifications-design.md
+enum NotificationKind {
+  ORDER_PLACED
+  ORDER_CONFIRMED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_CANCELLED_BY_CHEF
+  ORDER_EXPIRED
+  RATE_REMINDER
+  DISH_REQUEST_ANSWERED
+  DISH_REQUEST_ACCEPTED
+  NEW_ORDER
+  CONFIRM_REMINDER
+  CHEF_ORDER_EXPIRED
+  ORDER_CANCELLED_BY_CUSTOMER
+  NEW_REVIEW
+  NEW_DISH_REQUEST
+  PASSWORD_RESET
+  PASSWORD_CHANGED
+}
+
+enum EmailStatus {
+  PENDING // waiting to be sent, or to be tried again
+  SENDING // being sent right now
+  SENT
+  FAILED  // gave up
+  SKIPPED // a made-up address (the sample accounts), never handed to a real email service
+}
+
 model User {
   id                      String    @id @default(uuid())
   email                   String    @unique
@@ -68,9 +104,16 @@ model User {
   profilePhotoUrl         String?   @map("profile_photo_url")
   emailVerified           Boolean   @default(false) @map("email_verified")
   emailVerificationToken  String?   @map("email_verification_token")
-  passwordResetToken      String?   @map("password_reset_token")
+  // SHA-256 hash of the newest password reset link's token (never the token itself)
+  passwordResetToken      String?   @unique @map("password_reset_token")
   passwordResetExpires    DateTime? @map("password_reset_expires")
+  failedLoginAttempts     Int       @default(0) @map("failed_login_attempts")
+  lockedUntil             DateTime? @map("locked_until")
   isActive                Boolean   @default(true) @map("is_active")
+  // Optional emails a person can turn off (order and password emails always go out)
+  emailRateReminders      Boolean   @default(true) @map("email_rate_reminders")
+  emailDishRequestNews    Boolean   @default(true) @map("email_dish_request_news")
+  emailKitchenFeedback    Boolean   @default(true) @map("email_kitchen_feedback")
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
 
@@ -79,13 +122,33 @@ model User {
   ordersAsCustomer        Order[]      @relation("CustomerOrders")
   reviews                 Review[]
   suggestions             Suggestion[]
+  suggestionVotes         SuggestionVote[]
+  refreshTokens           RefreshToken[]
+  notifications           Notification[]
+  emails                  Email[]
 
   @@map("users")
+}
+
+// Long-lived login sessions. Only a SHA-256 hash of each token is stored.
+model RefreshToken {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  tokenHash   String   @unique @map("token_hash")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 model ChefProfile {
   id                      String   @id @default(uuid())
   userId                  String   @unique @map("user_id")
+  kitchenName             String?  @map("kitchen_name")
   bio                     String?  @db.Text
   specialties             String[]
   yearsExperience         Int?     @map("years_experience")
@@ -97,13 +160,27 @@ model ChefProfile {
   city                    String
   state                   String
   zipCode                 String   @map("zip_code")
-  latitude                Decimal  @db.Decimal(10, 8)
-  longitude               Decimal  @db.Decimal(11, 8)
+  // Filled in by geocoding (Phase 7); never sent in public responses
+  latitude                Decimal? @db.Decimal(10, 8)
+  longitude               Decimal? @db.Decimal(11, 8)
+  // Public area center: the location moved 0.1-0.3 miles in a random direction (services/geo.ts)
+  approxLatitude          Decimal? @map("approx_latitude") @db.Decimal(9, 6)
+  approxLongitude         Decimal? @map("approx_longitude") @db.Decimal(9, 6)
+  // How the kitchen was placed; null when it is not on the map
+  locationPrecision       LocationPrecision? @map("location_precision")
   serviceRadiusMiles      Decimal  @default(5.0) @map("service_radius_miles") @db.Decimal(5, 2)
   averageRating           Decimal? @map("average_rating") @db.Decimal(3, 2)
   totalReviews            Int      @default(0) @map("total_reviews")
   totalOrders             Int      @default(0) @map("total_orders")
   isAcceptingOrders       Boolean  @default(true) @map("is_accepting_orders")
+  // How orders are fulfilled
+  orderLeadTimeHours      Int      @default(24) @map("order_lead_time_hours")
+  offersPickup            Boolean  @default(true) @map("offers_pickup")
+  offersDelivery          Boolean  @default(false) @map("offers_delivery")
+  deliveryFee             Decimal  @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  timezone                String   @default("America/Los_Angeles")
+  // How many hours the chef promises to confirm new orders within: 1, 4, 12 or 24
+  confirmWithinHours      Int      @default(4) @map("confirm_within_hours")
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 
@@ -114,10 +191,26 @@ model ChefProfile {
   ordersAsChef            Order[]      @relation("ChefOrders")
   reviews                 Review[]
   suggestions             Suggestion[]
+  availability            ChefAvailability[]
 
   @@index([userId])
   @@index([latitude, longitude])
   @@map("chef_profiles")
+}
+
+// Weekly hours when a chef has food ready for pickup or delivery, in the chef's local time.
+model ChefAvailability {
+  id          String   @id @default(uuid())
+  chefId      String   @map("chef_id")
+  dayOfWeek   Int      @map("day_of_week") // 0 = Sunday ... 6 = Saturday
+  startTime   String   @map("start_time")  // "17:00"
+  endTime     String   @map("end_time")    // "20:00"
+
+  // Relations
+  chef        ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@unique([chefId, dayOfWeek])
+  @@map("chef_availability")
 }
 
 model Menu {
@@ -178,19 +271,31 @@ model Order {
   chefId              String            @map("chef_id")
   status              OrderStatus       @default(PENDING)
   subtotal            Decimal           @db.Decimal(10, 2)
+  deliveryFee         Decimal           @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  // The platform's commission, taken from the chef's payout (not added to the customer's total)
   platformFee         Decimal           @map("platform_fee") @db.Decimal(10, 2)
+  // What the customer pays: subtotal + delivery fee
   total               Decimal           @db.Decimal(10, 2)
   paymentStatus       PaymentStatus     @default(PENDING) @map("payment_status")
   paymentIntentId     String?           @map("payment_intent_id")
   pickupOrDelivery    PickupOrDelivery  @map("pickup_or_delivery")
   scheduledFor        DateTime          @map("scheduled_for")
   deliveryAddress     String?           @map("delivery_address") @db.Text
+  // Straight-line miles from the chef's area center to the delivery address, when it could be located
+  deliveryDistanceMiles Decimal?        @map("delivery_distance_miles") @db.Decimal(5, 1)
+  contactPhone        String?           @map("contact_phone")
   specialInstructions String?           @map("special_instructions") @db.Text
   customerNotes       String?           @map("customer_notes") @db.Text
   chefNotes           String?           @map("chef_notes") @db.Text
   cancellationReason  String?           @map("cancellation_reason") @db.Text
   cancelledAt         DateTime?         @map("cancelled_at")
   completedAt         DateTime?         @map("completed_at")
+  // When to remind the customer to rate the meals; cleared once handled
+  rateReminderAt      DateTime?         @map("rate_reminder_at")
+  // Confirm by this time or the order is cancelled automatically; null for orders placed before deadlines existed
+  confirmBy           DateTime?         @map("confirm_by")
+  // When to remind the chef (halfway to confirmBy); cleared once handled
+  chefReminderAt      DateTime?         @map("chef_reminder_at")
   createdAt           DateTime          @default(now()) @map("created_at")
   updatedAt           DateTime          @updatedAt @map("updated_at")
 
@@ -198,19 +303,41 @@ model Order {
   customer            User              @relation("CustomerOrders", fields: [customerId], references: [id])
   chef                ChefProfile       @relation("ChefOrders", fields: [chefId], references: [id])
   orderItems          OrderItem[]
+  events              OrderEvent[]
   payment             Payment?
-  review              Review?
+  reviews             Review[]
 
   @@index([customerId])
   @@index([chefId])
   @@index([status])
+  @@index([chefId, scheduledFor])
+  @@index([status, rateReminderAt])
+  @@index([status, confirmBy])
+  @@index([status, chefReminderAt])
   @@map("orders")
+}
+
+// Every status change on an order, for the tracking timeline and as an audit trail.
+model OrderEvent {
+  id          String      @id @default(uuid())
+  orderId     String      @map("order_id")
+  status      OrderStatus
+  note        String?     @db.Text
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_events")
 }
 
 model OrderItem {
   id                String   @id @default(uuid())
   orderId           String   @map("order_id")
   mealId            String   @map("meal_id")
+  // The meal's name when it was ordered, so order history stays accurate if the chef renames it
+  mealName          String   @default("") @map("meal_name")
   quantity          Int
   priceAtPurchase   Decimal  @map("price_at_purchase") @db.Decimal(10, 2)
   specialRequests   String?  @map("special_requests") @db.Text
@@ -223,9 +350,10 @@ model OrderItem {
   @@map("order_items")
 }
 
+// One review per meal per completed order, written by the customer who ordered it.
 model Review {
   id                String    @id @default(uuid())
-  orderId           String    @unique @map("order_id")
+  orderId           String    @map("order_id")
   mealId            String    @map("meal_id")
   chefId            String    @map("chef_id")
   customerId        String    @map("customer_id")
@@ -247,6 +375,7 @@ model Review {
   chef              ChefProfile @relation(fields: [chefId], references: [id])
   customer          User        @relation(fields: [customerId], references: [id])
 
+  @@unique([orderId, mealId])
   @@index([chefId])
   @@index([mealId])
   @@map("reviews")
@@ -262,6 +391,7 @@ model Suggestion {
   status              SuggestionStatus  @default(PENDING)
   chefResponse        String?           @map("chef_response") @db.Text
   priority            Priority          @default(MEDIUM)
+  // Number of people who want this dish (kept in step with suggestion_votes)
   votes               Int               @default(1)
   createdAt           DateTime          @default(now()) @map("created_at")
   updatedAt           DateTime          @updatedAt @map("updated_at")
@@ -269,8 +399,72 @@ model Suggestion {
   // Relations
   chef                ChefProfile       @relation(fields: [chefId], references: [id])
   customer            User              @relation(fields: [customerId], references: [id])
+  voters              SuggestionVote[]
 
+  @@index([chefId])
   @@map("suggestions")
+}
+
+// One row per person who wants a suggested dish, so nobody can vote twice.
+model SuggestionVote {
+  id            String     @id @default(uuid())
+  suggestionId  String     @map("suggestion_id")
+  userId        String     @map("user_id")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  suggestion    Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([suggestionId, userId])
+  @@map("suggestion_votes")
+}
+
+// One item under the bell.
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  kind        NotificationKind
+  title       String
+  body        String?          @db.Text
+  // Where tapping it goes, e.g. /orders/<id>
+  link        String
+  readAt      DateTime?        @map("read_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// Emails to send (the background helper works through the due PENDING ones) and, in development,
+// the practice mailbox's copy of every email.
+model Email {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  toAddress   String           @map("to_address")
+  kind        NotificationKind
+  // Everything the email's wording needs, captured when it was queued
+  data        Json
+  status      EmailStatus      @default(PENDING)
+  attempts    Int              @default(0)
+  sendAfter   DateTime         @default(now()) @map("send_after")
+  lastError   String?          @map("last_error") @db.Text
+  // Written just before sending
+  subject     String?
+  html        String?          @db.Text
+  textBody    String?          @map("text_body") @db.Text
+  sentAt      DateTime?        @map("sent_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, sendAfter])
+  @@map("emails")
 }
 
 model Payment {

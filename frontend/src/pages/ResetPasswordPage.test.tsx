@@ -1,0 +1,138 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { resetPassword } from '../services/accountService'
+import { useAuthStore } from '../store/authStore'
+import { useCartStore } from '../store/cartStore'
+import ResetPasswordPage from './ResetPasswordPage'
+
+vi.mock('../services/accountService', () => ({ resetPassword: vi.fn() }))
+const reset = vi.mocked(resetPassword)
+
+function LoginStub() {
+  const location = useLocation()
+  return <p>Login page: {(location.state as { message?: string } | null)?.message}</p>
+}
+
+function AddressBar() {
+  const location = useLocation()
+  return <p>Address: {location.pathname + location.search + location.hash}</p>
+}
+
+function renderAt(url: string) {
+  return render(
+    <MemoryRouter initialEntries={[url]}>
+      <Routes>
+        <Route
+          path="/reset-password"
+          element={
+            <>
+              <ResetPasswordPage />
+              <AddressBar />
+            </>
+          }
+        />
+        <Route path="/login" element={<LoginStub />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+function submit(password: string, again: string) {
+  fireEvent.change(screen.getByLabelText('New password'), { target: { value: password } })
+  fireEvent.change(screen.getByLabelText('New password again'), { target: { value: again } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save new password' }))
+}
+
+/** What the API client throws for an error answer. */
+function apiError(code: string, message: string) {
+  return Object.assign(new Error(message), { isAxiosError: true, response: { status: 400, data: { success: false, error: { code, message } } } })
+}
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+describe('ResetPasswordPage', () => {
+  it("forgets this device's session and cart once the password is saved", async () => {
+    reset.mockResolvedValue(undefined)
+    useAuthStore.setState({
+      status: 'authenticated',
+      accessToken: 'token',
+      user: {
+        id: 'user-1',
+        email: 'chris@example.com',
+        role: 'CUSTOMER',
+        firstName: 'Chris',
+        lastName: 'Walker',
+        phone: null,
+        profilePhotoUrl: null,
+        emailVerified: false,
+        createdAt: '2026-09-01T00:00:00.000Z',
+      },
+    })
+    useCartStore.getState().add({ id: 'chef-1', name: "Abuela's Table" }, { mealId: 'meal-1', name: 'Churros', price: 6, imageUrl: null }, 2)
+    renderAt('/reset-password#token=abc123')
+
+    submit('Tacos5ever', 'Tacos5ever')
+
+    await screen.findByText('Login page: Your password was changed. Log in with your new password.')
+    expect(useAuthStore.getState().status).toBe('anonymous')
+    expect(useCartStore.getState().items).toEqual([])
+  })
+
+  it('reads the token after the # in new emails', async () => {
+    reset.mockResolvedValue(undefined)
+    renderAt('/reset-password#token=abc123')
+
+    submit('Tacos5ever', 'Tacos5ever')
+
+    await screen.findByText('Login page: Your password was changed. Log in with your new password.')
+    expect(reset).toHaveBeenCalledWith('abc123', 'Tacos5ever')
+  })
+
+  it('takes the token out of the address bar', async () => {
+    renderAt('/reset-password#token=abc123')
+
+    await screen.findByText('Address: /reset-password')
+    screen.getByLabelText('New password')
+  })
+
+  it('saves the new password and sends the person to log in', async () => {
+    reset.mockResolvedValue(undefined)
+    renderAt('/reset-password?token=abc123')
+
+    submit('Tacos5ever', 'Tacos5ever')
+
+    await screen.findByText('Login page: Your password was changed. Log in with your new password.')
+    expect(reset).toHaveBeenCalledWith('abc123', 'Tacos5ever')
+  })
+
+  it('asks again when the two passwords differ', async () => {
+    renderAt('/reset-password?token=abc123')
+
+    submit('Tacos5ever', 'Tacos6ever')
+
+    await screen.findByText('The passwords do not match')
+    expect(reset).not.toHaveBeenCalled()
+  })
+
+  it('explains an expired link and offers a new one', async () => {
+    reset.mockRejectedValue(apiError('INVALID_RESET_LINK', 'This link has expired or was already used. Ask for a new one.'))
+    renderAt('/reset-password?token=abc123')
+
+    submit('Tacos5ever', 'Tacos5ever')
+
+    await screen.findByText('This link has expired or was already used. Ask for a new one.')
+    expect(screen.getByRole('link', { name: 'Ask for a new link' }).getAttribute('href')).toBe('/forgot-password')
+  })
+
+  it('explains a link without its token', () => {
+    renderAt('/reset-password')
+
+    screen.getByText('This link is not complete. Open it from the email again, or ask for a new one.')
+    screen.getByRole('link', { name: 'Ask for a new link' })
+  })
+})

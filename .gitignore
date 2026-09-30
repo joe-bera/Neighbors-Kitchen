@@ -1,7 +1,6 @@
-# Dependencies
+# Dependencies (npm lockfiles are committed; other package managers are not used)
 node_modules/
 */node_modules/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -51,9 +50,8 @@ Thumbs.db
 .DS_Store
 *.bak
 
-# Prisma
-backend/prisma/migrations/
-!backend/prisma/migrations/.gitkeep
+# Local PostgreSQL data, if LOCAL_PG_DATA_DIR ever points inside the project
+.pgdata/
 
 # Temporary files
 *.tmp

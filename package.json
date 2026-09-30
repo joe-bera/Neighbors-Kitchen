@@ -1,0 +1,19 @@
+{
+  "name": "neighbors-kitchen",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Community marketplace connecting local home chefs with their neighbors",
+  "scripts": {
+    "setup": "npm install && npm install --prefix backend && npm install --prefix frontend && node backend/scripts/ensure-env.mjs && npm run db:start --prefix backend && npm run db:generate --prefix backend && npm run db:migrate:deploy --prefix backend && npm run db:seed --prefix backend",
+    "dev": "npm run db:start --prefix backend && concurrently --kill-others --names api,web --prefix-colors blue,magenta \"PORT=4000 npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "db:start": "npm run db:start --prefix backend",
+    "db:stop": "npm run db:stop --prefix backend",
+    "db:seed": "npm run db:seed --prefix backend",
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}

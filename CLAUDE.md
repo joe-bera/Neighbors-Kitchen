@@ -1,7 +1,22 @@
 # CLAUDE.md - AI Assistant Guide for Neighbors-Kitchen
 
-> **Last Updated:** 2025-11-17
-> **Repository Status:** Initial development phase
+> **Last Updated:** 2026-09-30
+> **Repository Status:** Phases 1-4, 6, 7 and 8a (live preview) complete; Phase 5 waits for Stripe test keys; 8b (public launch) after payments
+
+## Build Plan
+
+The app is built in eight phases, each tested and runnable before the next starts. The status table lives in README.md ("Project Status"); keep it current.
+
+1. Foundation: database, sample chefs and meals, sign-up and login (done)
+2. Customers: browse and search chefs and meals, chef and meal pages, working landing page buttons (done)
+3. Chefs: become a chef, chef dashboard, add/edit meals with photos, availability (done)
+4. Ordering: cart, pre-orders with pickup or delivery times, order tracking (done)
+5. Payments: Stripe test mode, platform fee, chef payouts (waiting for the owner's Stripe test keys and Connect)
+6. Reviews, ratings and dish suggestions (done)
+7. Map of nearby chefs, notifications: bell and email (done)
+8. Put it live on the internet (8a done: show-and-tell preview at https://neighborskitchen.app; 8b: public launch)
+
+After each phase: run the full test suites, run the app and click through the new flows, update README, commit and push. Ask the project owner before signing up for, or paying for, any outside service, and say exactly which account or key is needed.
 
 ## Project Overview
 
@@ -27,13 +42,54 @@
 ## Codebase Structure
 
 ### Current State
-The repository is in its initial state with minimal files:
 ```
 Neighbors-Kitchen/
-├── .git/
-├── README.md
-└── CLAUDE.md (this file)
+├── package.json        # root scripts: setup, dev, test, build, db:start/stop/seed
+├── Dockerfile, railway.json  # the live site (Railway)
+├── frontend/           # React 19 + Vite, port 3000 (proxies /api to 4000)
+│   └── src/            # components/{layout,auth,common,meal,chef,cart,order,feedback,location,notifications}, pages/ (pages/chef = dashboard), services/, store/, hooks/, types/, utils/
+├── backend/            # Express 5 + Prisma, port 4000
+│   ├── src/            # app.ts, index.ts, config/, controllers/, routes/, services/, jobs/, middleware/, validators/, lib/, utils/, types/, web/ (website, security)
+│   ├── prisma/         # schema.prisma, migrations/ (committed), seed.ts, sample-photos/ (sample meal photos + CREDITS.md)
+│   ├── data/           # zip-centroids.csv (Census ZIP code locations, committed)
+│   ├── scripts/        # db.mjs (local Postgres), ensure-env.mjs, build-zip-centroids.mjs
+│   └── tests/          # Vitest + Supertest API tests
+└── .claude/launch.json # preview config: `npm run dev` on port 3000
 ```
+
+Key conventions already in place:
+- Backend is ESM with `module: NodeNext`: relative imports must end in `.js` (e.g. `import { prisma } from '../lib/prisma.js'`).
+- Environment is validated once in `backend/src/config/env.ts`; read settings from `env`, not `process.env`.
+- Throw `AppError(status, code, message, details?)` from `backend/src/utils/errors.ts`; the error handler formats it.
+- Validate request bodies with `validateBody(zodSchema)`; protect routes with `requireAuth` / `requireRole(...)`.
+- Auth: 15-minute JWT access token (in memory on the client) + 7-day refresh token in an httpOnly cookie (`nk_refresh`, path `/api/v1/auth`), stored hashed in `refresh_tokens`.
+- Frontend calls the API through `frontend/src/services/api.ts`, which attaches the token and refreshes it once on `TOKEN_EXPIRED`.
+- Public catalog visibility lives in `backend/src/services/catalogShared.ts`: a meal is orderable only if it is available, on an active menu, from an active chef account. Reuse `orderableMealWhere` / `visibleChefWhere` instead of re-writing the conditions, and never add address, lat/long, email or phone to public responses (`tests/chefs.test.ts` checks this).
+- Prisma `Decimal` fields (prices, ratings) must be converted with `.toNumber()` before sending JSON.
+- Frontend data loading uses `useAsyncData(key, loader)`; list pages keep filters in the URL (`useSearchParams` + `withUpdatedParams`).
+- Chef-only endpoints live under `/api/v1/chefs/me` (`routes/kitchenRoutes.ts`) and are scoped to the signed-in chef via `requireOwnKitchen(userId)`; another chef's meal must look like a 404, never a 403. `/chefs/me` is mounted before `/chefs/:id`.
+- Meal photos go through `POST /api/v1/uploads/meal-photo` (`services/uploadService.ts`): sharp re-encodes to WebP (max 1600px) and drops EXIF/GPS. Meals only accept `imageUrl` values from that endpoint (or the photo they already had). Files are served from `UPLOAD_DIR` at `/uploads/...`.
+- Chef weekly hours are `chef_availability` rows (0 = Sunday, local "HH:MM" times, one window per day) plus `orderLeadTimeHours`, `offersPickup`, `offersDelivery`, `deliveryFee` and `timezone` on the chef profile. Frontend helpers: `utils/availability.ts`.
+- The chef dashboard (`pages/chef/`) gets the kitchen from `ChefLayout` through `useChefKitchen()`; call `setKitchen` after saving and `reloadKitchen` when counts change.
+- Orders (`services/orderService.ts`): prices, fees and totals are always computed on the server from the menu. `total = subtotal + deliveryFee`; `platformFee` (PLATFORM_FEE_PERCENT of subtotal) comes out of the chef's payout and is never shown to customers. Statuses only move one step at a time (`NEXT_STATUS`); every change writes an `order_events` row. Meal rows are locked (`SELECT ... FOR UPDATE`) while checking `maxOrdersPerDay`. The chef's street address is only returned to the customer after the chef confirms a pickup order.
+- Pickup/delivery times come from `services/scheduling.ts` (Luxon, chef's `timezone`, 30-minute slots, lead time, 14-day window); orders must match an offered slot exactly. The frontend shows times with `utils/orders.ts` in the chef's time zone.
+- The cart (`store/cartStore.ts`, persisted in localStorage) holds one kitchen at a time and is cleared on logout.
+- Reviews (`services/reviewService.ts`): one per meal per completed order (unique `order_id + meal_id`), so every review is a verified purchase. After any review change, call `refreshRatings(tx, mealId, chefId)` in the same transaction; it rewrites `average_rating` / `total_reviews` on the meal and the chef. Public reviews show the customer as "First L." only.
+- Dish requests (`services/suggestionService.ts`): `suggestions.votes` is a cached count kept in step with `suggestion_votes` rows (the requester's own vote is created with the request). Declined requests are hidden from the public page; chefs cannot request or vote on their own kitchen.
+- `optionalAuth` reads the user when an `Authorization` header is sent and lets anonymous visitors through; use it for public endpoints that personalise a little (e.g. "you voted"). On the frontend, `useOwnKitchenId()` tells a chef's page that the viewer owns it.
+- Location (`services/geo.ts`, `zipCodes.ts`, `geocoding.ts`, `locationService.ts`): `chef_profiles.latitude/longitude` are exact and private; `approx_latitude/approx_longitude` are the public area center (moved 0.1-0.3 mi, re-picked only when the street, city, state or ZIP changes). Every public distance, the distance filter and the delivery check are measured from the area center with `distanceMiles` and rounded with `roundToTenth`; `toArea()` is the only public shape. `location_precision` records ADDRESS or ZIP_CODE: ZIP-only (or unrecorded) kitchens are looked up again on every save and are never measured for delivery; a delivery address the geocoder cannot find is judged by its typed ZIP code (`zipFromAddress`: exactly one 5-digit number that is not the leading house number) and refused only beyond the limit plus `ZIP_MARGIN_MILES` (5), otherwise let through with no stored distance; `relocateKitchen` keeps the stored circle when a new lookup lands within 0.05 mi of the stored spot. The Census geocoder is called only when a chef saves an address or a customer places a delivery order, never from public endpoints; one 6-second limit covers the whole lookup, including a single retry without the dash for house numbers like "73-510". Tests run with `GEOCODER=off` and mock `services/geocoding.js`. ZIP lookups use the committed `backend/data/zip-centroids.csv`. Map components (`components/location/ChefsMap`, `AreaMap`) are only imported with `React.lazy`.
+- Notifications (`services/notifications/`): every bell item and email is created by `notify(tx, recipient, kind, data)` inside the transaction of the change it describes (load recipients with `recipientSelect`; order data with `orderNoticeData` / `orderParties`). `kinds.ts` holds each kind's rules (bell, email, which user switch turns the email off) and data type; `bellText.ts` and `emailTemplates.ts` hold the wording (user text is HTML-escaped; emails never contain street addresses, phone numbers or, for customers, the platform fee; copy never guesses pronouns). Emails are rows in `emails`, written and sent by `deliverDueEmails`, which `jobs/backgroundJobs.ts` runs every `JOBS_INTERVAL_MS` (started only from `index.ts`, never in tests); failed sends retry after 1, 5, 30 and 120 minutes. `EMAIL_TRANSPORT=mailbox` sends nothing; the practice mailbox (`/api/v1/dev/emails`, page `/dev/mailbox`) exists only outside production. Backend tests read notices with `tests/notificationHelpers.ts` (`bellFor`, `emailsFor`). Optional emails are switched off with users.email_rate_reminders / email_dish_request_news / email_kitchen_feedback (the bell always shows everything). Completing an order sets rate_reminder_at; sendRateReminders (reviewService) sends the reminder only if a meal is unrated. Dish-request answers notify the asker when the status or reply changes and other voters only when the status first becomes ACCEPTED. New orders get confirm_by = min(placed + the chef's confirm_within_hours, scheduledFor) and chef_reminder_at halfway (confirmationTimes in orderService); sendChefReminders and expireOverdueOrders act on them with conditional updates, and orders with no confirm_by never expire. Password reset: users.password_reset_token holds a unique SHA-256 hash; links last 1 hour, one reset email per account per 2 minutes; resetting clears the lock and every refresh token and sends PASSWORD_CHANGED. Cut people's text (excerpts, initials) only at whole characters with `graphemes` (`utils/text.ts`): half an emoji is refused by the database and would fail the whole change. Timed tasks handle each order in its own try/catch so one bad order never blocks the rest. Backend tests reach the app through `tests/loopbackServer.ts`, which binds each test server to 127.0.0.1 (other programs on a developer's computer can hold the same port numbers).
+- Live preview (Phase 8a, `docs/superpowers/specs/2026-09-29-phase8a-live-preview-design.md`):
+  - **Packaging.** One Docker image (`Dockerfile`; Railway settings in `railway.json`, deploys from `main`) runs everything; it also carries `backend/src`, because the pre-deploy seed runs from TypeScript with tsx. In production `createApp(appOptionsFromEnv())` also serves `frontend/dist` (`web/website.ts`): `/assets` immutable, and `index.html` no-cache for every GET/HEAD outside `/api`, `/uploads` and `/health`.
+  - **Preview mode.** `PREVIEW_MODE=true` adds `<meta name="nk-preview" content="true" />` (read by `PreviewBanner`), a Disallow `robots.txt` and `X-Robots-Tag: noindex, nofollow`.
+  - **Settings.** `readEnv` refuses unsafe production settings (`productionProblems`).
+  - **Proxy.** `TRUST_PROXY_HOPS` (1 on Railway) sets trust proxy and logs one "Proxy check" line.
+  - **Headers.** Helmet's CSP allows only our files plus `https://tile.openstreetmap.org`; `Referrer-Policy` is `strict-origin-when-cross-origin`, because OpenStreetMap's tiles need a Referer.
+  - **Email.** `EMAIL_TRANSPORT=resend` uses `resendTransport` (10 s limit, `Idempotency-Key` = email id). Real transports mark reserved addresses (`isReservedAddress`) `SKIPPED`, and subjects go through `cleanSubject`.
+  - **Reset links.** They put the token after `#`, and the reset endpoint clears the refresh cookie.
+  - **Sample data.** It loads only through `sampleDataPlan()`: never on a live site unless it is the preview with `DEMO_PASSWORD` of at least 12 characters. `npm run db:seed:preview` loads it once. Railway's pre-deploy runs `npm run db:predeploy` (migrations, then that); keep it a single npm script, because Railway may start it without a shell (`tests/predeploy.test.ts`).
+  - **Sample photos.** They live in `backend/prisma/sample-photos/<samplePhotoId(name)>.webp` (credits in `CREDITS.md`) and are served at `/uploads/meals/` after `UPLOAD_DIR`.
+  - **Stopping.** SIGTERM stops the helper after its pass, lets requests finish (25 s), then disconnects (`lib/shutdown.ts`).
 
 ### Recommended Structure
 For a full-stack marketplace application, we recommend this structure:
@@ -354,108 +410,30 @@ git pull --rebase origin <branch-name>
 ## Environment Setup
 
 ### Prerequisites
-- Node.js 18+ LTS
-- PostgreSQL 14+
-- npm or pnpm
+- Node.js 20+ and npm
 - Git
-- (Optional) Docker Desktop for containerized development
+
+PostgreSQL is not installed separately: `backend/scripts/db.mjs` runs a private server from the `embedded-postgres` npm package on port 5433, with data in `~/.neighbors-kitchen/pgdata` (kept out of the repo so iCloud-style folder sync never touches live database files; override with `LOCAL_PG_DATA_DIR`). It hosts two databases: `neighbors_kitchen` (dev) and `neighbors_kitchen_test` (tests).
 
 ### Installation Steps
 ```bash
-# Clone the repository
 git clone https://github.com/joe-bera/Neighbors-Kitchen.git
 cd Neighbors-Kitchen
-
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
-
-# Set up environment variables (copy from .env.example)
-cp .env.example .env
-
-# Set up database
-npm run db:migrate
-npm run db:seed  # Optional: seed with test data
-
-# Run development servers
-# Terminal 1 - Backend
-cd backend && npm run dev
-
-# Terminal 2 - Frontend
-cd frontend && npm run dev
+npm run setup   # installs, creates backend/.env, starts Postgres, migrates, seeds
+npm run dev     # Postgres + API (4000) + website (3000); open http://localhost:3000
 ```
+
+npm 11 blocks dependency install scripts unless they are listed in `allowScripts` in each package.json. Approve new ones with `npm install-scripts approve <pkg> --no-allow-scripts-pin` after checking what they do.
 
 ### Environment Variables
 
 #### Backend (.env)
-```bash
-# Server Configuration
-NODE_ENV=development
-PORT=5000
-API_URL=http://localhost:5000
-FRONTEND_URL=http://localhost:3000
-
-# Database
-DATABASE_URL=postgresql://username:password@localhost:5432/neighbors_kitchen
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=neighbors_kitchen
-DB_USER=your_username
-DB_PASSWORD=your_password
-
-# Authentication
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
-JWT_REFRESH_SECRET=your-refresh-secret-key
-JWT_EXPIRE=15m
-JWT_REFRESH_EXPIRE=7d
-
-# Stripe Payment
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_CONNECT_CLIENT_ID=ca_...
-PLATFORM_FEE_PERCENTAGE=10
-
-# Email Service (SendGrid example)
-EMAIL_SERVICE=sendgrid
-SENDGRID_API_KEY=SG...
-EMAIL_FROM=noreply@neighbors-kitchen.com
-EMAIL_FROM_NAME=Neighbors Kitchen
-
-# File Upload (AWS S3 example)
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=us-east-1
-AWS_S3_BUCKET=neighbors-kitchen-images
-
-# Or Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
-# Google Maps API
-GOOGLE_MAPS_API_KEY=AIza...
-
-# Session (if using Redis)
-REDIS_URL=redis://localhost:6379
-SESSION_SECRET=your-session-secret
-
-# Monitoring & Error Tracking
-SENTRY_DSN=https://...@sentry.io/...
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-```
+See `backend/.env.example` (the source of truth). Currently used: `NODE_ENV`, `PORT` (4000), `FRONTEND_URL`, `DATABASE_URL`, `JWT_SECRET` (32+ chars), `JWT_EXPIRE`, `REFRESH_TOKEN_TTL_DAYS`, `BCRYPT_ROUNDS`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `UPLOAD_DIR`, `PLATFORM_FEE_PERCENT`, `GEOCODER`, `EMAIL_TRANSPORT`, `EMAIL_FROM`, `JOBS_INTERVAL_MS`, `RATE_REMINDER_DELAY_MINUTES`, and for the live site `PREVIEW_MODE`, `TRUST_PROXY_HOPS`, `WEB_DIST_DIR`, `RESEND_API_KEY`, `DEMO_PASSWORD` (see `DEPLOYMENT.md`). Later phases add Stripe, maps and image-storage keys; add each new one to `.env.example` and to the schema in `src/config/env.ts`.
 
 #### Frontend (.env)
 ```bash
-# API Configuration
-VITE_API_URL=http://localhost:5000
+# API Configuration (leave empty in development: Vite proxies /api to port 4000)
+VITE_API_URL=
 VITE_API_TIMEOUT=10000
 
 # Stripe (Public Key)
@@ -485,12 +463,15 @@ VITE_GA_TRACKING_ID=UA-...
 ## Testing Strategy
 
 ### Test Organization
-*To be established*
+- **Backend:** Vitest + Supertest in `backend/tests/*.test.ts`. Tests call `createApp()` and hit the real `neighbors_kitchen_test` database; every table is truncated before each test (`tests/setup.ts`), and migrations are applied once per run (`tests/globalSetup.ts`). Test settings live in `tests/testEnv.ts`.
+- **Frontend:** Vitest in `frontend/src/**/*.test.ts`, with MSW mocking the HTTP API for the `services/` layer.
+- Write the failing test first, then the code.
 
 ### Running Tests
 ```bash
-# Add commands when test suite is set up
-# Example: npm test, pytest, etc.
+npm test                  # everything, from the project root
+cd backend && npm test    # API tests only
+cd frontend && npm test   # frontend tests only
 ```
 
 ### Testing Guidelines
@@ -1100,7 +1081,10 @@ const handleError = (error: ApiError) => {
 - **Detached HEAD:** `git checkout <branch-name>` to reattach
 
 ### Development Issues
-*To be added as they arise*
+- **Port 5000 is taken on macOS** by AirPlay Receiver; the API uses 4000. The root `dev` script pins `PORT=4000` because some launchers export `PORT` for the website.
+- **Unexpected dev-server restarts or page reloads:** iCloud Drive syncing `~/Documents` can fire file-change events without changing files. Harmless; it stops once sync catches up.
+- **`ERR_MODULE_NOT_FOUND` when running `dist/`:** a backend relative import is missing its `.js` extension.
+- **Prisma client out of date after a schema change:** run `npm run db:migrate` (or `npm run db:generate`) in `backend/`.
 
 ## Resources and References
 
@@ -1276,5 +1260,5 @@ Track these key metrics:
 
 **Note:** This is a living document. As Neighbors-Kitchen develops, this guide should be updated to reflect the actual codebase, conventions, and workflows established by the team.
 
-**Last Updated:** 2025-11-17
-**Contributors:** AI Assistant (Initial comprehensive guide for chef marketplace platform)
+**Last Updated:** 2026-09-30
+**Contributors:** AI Assistant (Initial comprehensive guide for chef marketplace platform; Phases 1-4 and 6)

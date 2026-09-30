@@ -1,0 +1,366 @@
+/* Reviews, ratings and dish requests */
+
+/* Read-only stars */
+.stars {
+  display: inline-flex;
+  gap: 0.1rem;
+  line-height: 1;
+}
+
+.star {
+  color: var(--color-border-strong);
+}
+
+.star--on {
+  color: #d69e2e;
+}
+
+/* Star picker */
+.star-input {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.star-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.star-input-star {
+  padding: 0.1rem 0.15rem;
+  border-radius: 6px;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--color-border-strong);
+  cursor: pointer;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.star-input-star.is-on {
+  color: #d69e2e;
+}
+
+.star-input-star:hover {
+  transform: scale(1.12);
+}
+
+.star-input-star:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.star-input-word {
+  margin-left: 0.6rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+/* Public reviews */
+.reviews-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.reviews-average {
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.reviews-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.reviews-summary .stars {
+  font-size: 1.25rem;
+}
+
+.review-list {
+  list-style: none;
+}
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.review-list .review:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.review-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+}
+
+.review-author {
+  font-weight: 700;
+}
+
+.review-date {
+  color: var(--color-text-subtle);
+  font-size: 0.9rem;
+}
+
+.review-meal {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.review-comment,
+.chef-reply-text,
+.dish-request-description {
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.chef-reply {
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--color-brand);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--color-surface-muted);
+}
+
+.chef-reply-label {
+  margin-bottom: 0.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-brand-ink);
+}
+
+.review-report-button {
+  align-self: flex-start;
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+}
+
+.review-report {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 480px;
+}
+
+.review-report-done {
+  font-size: 0.9rem;
+  color: var(--color-success);
+}
+
+/* "Rate your meals" on a completed order */
+.rate-meals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rate-meals-list {
+  list-style: none;
+}
+
+.rate-meal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.rate-meal:first-child {
+  border-top: none;
+  padding-top: 0.25rem;
+}
+
+.rate-meal:last-child {
+  padding-bottom: 0;
+}
+
+.rate-meal-name {
+  font-size: 1.1rem;
+}
+
+.review-form,
+.posted-review,
+.reply-form,
+.request-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.posted-review-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+}
+
+.posted-review-rating .stars {
+  font-size: 1.2rem;
+}
+
+/* Dish requests */
+.section-intro {
+  margin-top: -0.75rem;
+  color: var(--color-text-muted);
+}
+
+.dish-requests,
+.reviews-section,
+.feedback-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dish-requests .section-heading,
+.reviews-section .section-heading {
+  margin-bottom: 0;
+}
+
+.dish-request-list,
+.review-cards {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dish-request {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem;
+  align-items: start;
+  padding: 1.5rem;
+}
+
+.dish-request-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.dish-request-name {
+  font-size: 1.15rem;
+}
+
+.dish-request-meta {
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+}
+
+.dish-request-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+  text-align: right;
+}
+
+.dish-request-votes {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.dish-status--considering {
+  background: var(--color-brand-soft);
+  color: var(--color-brand-ink);
+}
+
+.dish-status--accepted {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.dish-status--declined {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.vote-button {
+  white-space: nowrap;
+}
+
+.vote-button[aria-pressed='true'] {
+  background: var(--color-brand-strong);
+  border-color: var(--color-brand-strong);
+  color: white;
+}
+
+.dish-requests-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* Chef dashboard */
+.feedback-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.review--dashboard {
+  padding: 1.5rem;
+  border-bottom: none;
+}
+
+.review-cards .review > .text-button {
+  align-self: flex-start;
+}
+
+.dish-request--dashboard {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+}
+
+.dish-request--dashboard .dish-request-side {
+  align-items: flex-start;
+}
+
+.save-status {
+  align-self: center;
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+@media (max-width: 700px) {
+  .dish-request,
+  .dish-request--dashboard {
+    grid-template-columns: 1fr;
+    padding: 1.25rem;
+  }
+
+  .dish-request-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .reviews-average {
+    font-size: 2.25rem;
+  }
+
+  .star-input-star {
+    font-size: 2.2rem;
+  }
+}
