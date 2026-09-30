@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { fetchChefSuggestions, removeSuggestionVote, voteForSuggestion } from '../../services/feedbackService'
@@ -38,6 +38,13 @@ export default function DishRequests({ chefId, kitchenName, isOwnKitchen }: Dish
   // New requests stay on top where their author can see them; votes do not reorder the list while reading.
   const loaded = (requests.data ?? []).filter((item) => !added.some((mine) => mine.id === item.id))
   const items = [...added, ...loaded].map((item) => changed[item.id] ?? item)
+
+  // Bell items and emails link to #requests-heading. The page's own scroll happens before the requests are
+  // on the page, so scroll here once they have loaded (AccountPage does the same for #email-settings).
+  const requestsLoaded = requests.data !== undefined
+  useEffect(() => {
+    if (requestsLoaded && location.hash === '#requests-heading') document.getElementById('requests-heading')?.scrollIntoView()
+  }, [requestsLoaded, location.hash])
 
   const toggleVote = async (suggestion: Suggestion) => {
     setVoting(suggestion.id)

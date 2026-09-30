@@ -68,6 +68,22 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('DishRequests', () => {
+  it('scrolls to the requests once they have loaded, when a link asks for them', async () => {
+    let answer: (items: Suggestion[]) => void = () => {}
+    vi.mocked(fetchChefSuggestions).mockReturnValue(new Promise((resolve) => (answer = resolve)))
+
+    render(
+      <MemoryRouter initialEntries={['/chefs/chef-1#requests-heading']}>
+        <DishRequests chefId="chef-1" kitchenName="Abuela's Table" isOwnKitchen={false} />
+      </MemoryRouter>,
+    )
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+    answer([suggestion()])
+
+    await screen.findByText('Birria tacos')
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps the place in the page when sending a visitor to log in', async () => {
     vi.mocked(fetchChefSuggestions).mockResolvedValue([])
 
