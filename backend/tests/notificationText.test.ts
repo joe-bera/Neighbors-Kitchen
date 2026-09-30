@@ -77,6 +77,14 @@ describe('bellText', () => {
     });
   });
 
+  it("opens the chef's dish requests tab for a new request", () => {
+    expect(bellText('NEW_DISH_REQUEST', sampleRequest)).toEqual({
+      title: 'New dish request: Birria tacos',
+      body: 'From Dana K.',
+      link: '/chef/feedback?view=requests',
+    });
+  });
+
   it('shows a review comment, shortened when long, or who wrote it', () => {
     expect(bellText('NEW_REVIEW', sampleReview)).toEqual({
       title: 'New 5-star review for Chicken Enchilada Casserole',

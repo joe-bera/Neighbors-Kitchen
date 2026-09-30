@@ -11,6 +11,7 @@ export interface BellText {
 
 const CHEF_ORDERS = '/chef/orders';
 const CHEF_FEEDBACK = '/chef/feedback';
+const CHEF_REQUESTS = '/chef/feedback?view=requests';
 const orderPage = (data: OrderNoticeData) => `/orders/${data.orderId}`;
 const requestsSection = (data: DishRequestNoticeData) => `/chefs/${data.chefId}#requests-heading`;
 const when = (data: OrderNoticeData) => formatWhen(data.scheduledFor, data.timezone);
@@ -71,7 +72,7 @@ const BELL_TEXT: { [K in BellKind]: (data: NoticeDataByKind[K]) => BellText } = 
     body: short(data.comment) ?? `From ${data.customerName}`,
     link: CHEF_FEEDBACK,
   }),
-  NEW_DISH_REQUEST: (data) => ({ title: `New dish request: ${data.mealName}`, body: `From ${data.requesterName}`, link: CHEF_FEEDBACK }),
+  NEW_DISH_REQUEST: (data) => ({ title: `New dish request: ${data.mealName}`, body: `From ${data.requesterName}`, link: CHEF_REQUESTS }),
 };
 
 /** The bell text for a notice, or null for kinds that never go under the bell (receipts and password emails). */

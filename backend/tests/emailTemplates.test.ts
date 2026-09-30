@@ -3,6 +3,13 @@ import { renderEmail } from '../src/services/notifications/emailTemplates.js';
 import { sampleOrder, sampleRequest, sampleReview } from './noticeFixtures.js';
 
 describe('renderEmail', () => {
+  it('links dish-request emails to the requests', () => {
+    expect(renderEmail('NEW_DISH_REQUEST', sampleRequest).text).toContain('Answer the request: http://localhost:3000/chef/feedback?view=requests');
+    expect(renderEmail('DISH_REQUEST_ACCEPTED', { ...sampleRequest, status: 'ACCEPTED' }).text).toContain(
+      "See Abuela's Table: http://localhost:3000/chefs/chef-1#requests-heading",
+    );
+  });
+
   it('writes the receipt with the order details and a button to the order', () => {
     const email = renderEmail('ORDER_PLACED', sampleOrder);
 

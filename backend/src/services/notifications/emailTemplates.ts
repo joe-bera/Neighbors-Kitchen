@@ -107,7 +107,7 @@ const CONTENT: { [K in EmailKind]: (data: NoticeDataByKind[K]) => EmailContent }
     subject: `Good news: ${data.kitchenName} will make ${data.mealName}`,
     heading: `Good news: ${data.kitchenName} will make ${data.mealName}`,
     lines: ['You voted for this dish. Keep an eye on the menu.', data.reply ? `The chef's reply: ${quoted(data.reply)}` : null],
-    button: { label: `See ${data.kitchenName}`, path: `/chefs/${data.chefId}` },
+    button: { label: `See ${data.kitchenName}`, path: `/chefs/${data.chefId}#requests-heading` },
     switchable: true,
   }),
   NEW_ORDER: (data) => ({
@@ -164,7 +164,7 @@ const CONTENT: { [K in EmailKind]: (data: NoticeDataByKind[K]) => EmailContent }
     subject: `New dish request: ${data.mealName}`,
     heading: `${data.requesterName} asked for ${data.mealName}`,
     lines: [data.description ? quoted(data.description) : null, 'Neighbors can vote for it too. You can answer from your Feedback page.'],
-    button: { label: 'Answer the request', path: '/chef/feedback' },
+    button: { label: 'Answer the request', path: '/chef/feedback?view=requests' },
     switchable: true,
   }),
   PASSWORD_RESET: (data) => ({

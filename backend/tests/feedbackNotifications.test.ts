@@ -87,7 +87,7 @@ describe('New dish requests', () => {
     await newRequest(kitchen, asker);
 
     expect(await bellFor(kitchen.userId)).toEqual([
-      { kind: 'NEW_DISH_REQUEST', title: 'New dish request: Birria tacos', body: 'From Dana K.', link: '/chef/feedback' },
+      { kind: 'NEW_DISH_REQUEST', title: 'New dish request: Birria tacos', body: 'From Dana K.', link: '/chef/feedback?view=requests' },
     ]);
     const [email] = await emailsFor(kitchen.userId);
     expect(email).toMatchObject({
