@@ -45,7 +45,9 @@
     "jsonwebtoken": "^9.0.2",
     "luxon": "^3.7.2",
     "multer": "^2.4.0",
+    "prisma": "^6.19.0",
     "sharp": "^0.35.4",
+    "tsx": "^4.20.6",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -64,9 +66,7 @@
     "eslint": "^9.39.1",
     "pg": "^8.23.0",
     "prettier": "^3.6.2",
-    "prisma": "^6.19.0",
     "supertest": "^7.1.4",
-    "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^5.0.1"
   },

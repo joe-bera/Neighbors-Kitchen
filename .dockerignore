@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+backend/uploads
+.git
+.superpowers
+.claude
+docs
+AGENTS.md
+**/*.log
+**/coverage
+**/.DS_Store
