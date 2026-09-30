@@ -72,6 +72,13 @@ describe('the website in production', () => {
     expect(res.status).toBe(301);
     expect(res.get('Location')).toBe('https://neighborskitchen.app/chefs?near=92373');
   });
+
+  it('never names the web framework, even when sending www visitors on', async () => {
+    const res = await request(site()).get('/chefs').set('Host', 'www.neighborskitchen.app');
+
+    expect(res.status).toBe(301);
+    expect(res.get('X-Powered-By')).toBeUndefined();
+  });
 });
 
 describe('the preview site', () => {

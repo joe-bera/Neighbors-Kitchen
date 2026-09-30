@@ -33,6 +33,8 @@ export function appOptionsFromEnv(): AppOptions {
 
 export function createApp(options: AppOptions = appOptionsFromEnv()): Express {
   const app = express();
+  // Off for the whole app: helmet only hides it on requests that reach helmet, and the www redirect answers first.
+  app.disable('x-powered-by');
 
   // Behind Railway's proxy the visitor's own address arrives in X-Forwarded-For.
   if (options.trustProxyHops) {
