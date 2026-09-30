@@ -15,7 +15,7 @@ The app is being built in eight phases. Each phase is tested and runnable before
 | 5. Payments | Stripe (test mode), platform fee, chef payouts | ⏸ Waiting for Stripe test keys |
 | 6. Trust | Reviews, ratings and dish suggestions | ✅ Done |
 | 7. Local | Find chefs near you on a map, email notifications | ✅ Done |
-| 8. Launch | Put it live on the internet | ⏳ |
+| 8. Launch | Put it live on the internet | 🔶 8a: show-and-tell preview at https://neighborskitchen.app (public launch after payments: 8b) |
 
 Phase 6 was built before Phase 5, which is waiting for a Stripe account.
 
@@ -54,8 +54,7 @@ Phase 6 was built before Phase 5, which is waiting for a Stripe account.
 
 ### Future Integrations
 - Stripe (payment processing)
-- Cloudinary or similar (image storage in production)
-- Email service (notifications)
+- Photo storage that scales, for the public launch
 - A map tile provider for production traffic (OpenStreetMap's free tiles are meant for light use)
 
 ## Project Structure
@@ -63,6 +62,8 @@ Phase 6 was built before Phase 5, which is waiting for a Stripe account.
 ```
 Neighbors-Kitchen/
 ├── package.json          # One-command scripts: npm run setup, npm run dev, npm test
+├── Dockerfile            # the live site's image (Railway)
+├── railway.json          # Railway build and deploy settings
 ├── frontend/             # React app (http://localhost:3000)
 │   └── src/
 │       ├── components/   # layout/, auth/, common/, meal/, chef/, cart/, order/, feedback/, location/
@@ -230,7 +231,7 @@ The API follows RESTful conventions and is versioned at `/api/v1/`. Responses lo
 List endpoints return `pagination: { page, limit, total, totalPages }`. Public responses never include a chef's street address, exact location or contact details.
 
 ### Coming in later phases
-Payments (Phase 5). At launch (Phase 8) a real email service replaces the practice mailbox.
+Payments (Phase 5), then the public launch (Phase 8b).
 
 ## Website pages
 
@@ -261,9 +262,11 @@ Payments (Phase 5). At launch (Phase 8) a real email service replaces the practi
 
 **How location works (Phase 7):** a kitchen is placed on the map from its street address when the chef saves it (US Census Bureau geocoder, free). If only its ZIP code can be found, it is placed in the middle of the ZIP code, the chef's Kitchen profile says so and asks them to check the address, the next save tries again, and delivery distances are not checked until the street address is found. Neighbors only ever see an approximate area: a circle about a mile across that contains the kitchen but is not centered on it, and every distance is measured to that circle. The circle is only redrawn when the kitchen really moves, so editing the address text cannot be used to narrow down a home. Customers search from a ZIP code or their browser's location (rounded to about half a mile and never stored). Delivery orders from farther than the chef delivers are turned down at checkout. If an address cannot be found at all, the app goes by the ZIP code typed in it: the order is turned down only when the middle of that ZIP code is more than 5 miles beyond the chef's limit, and otherwise it goes through and the chef can decline it (as it does when there is no clear ZIP code). Map tiles © OpenStreetMap contributors. ZIP code locations come from the US Census Bureau Gazetteer (public domain) in `backend/data/zip-centroids.csv`; rebuild it with `node scripts/build-zip-centroids.mjs` (see the script for the download link).
 
-**How notifications work (Phase 7b):** a bell in the menu bar shows what happened, with a count of unread items; opening it marks them read, and "See all" (`/notifications`) keeps the history. Each chef promises to confirm new orders within 1, 4, 12 or 24 hours (set under Hours & delivery; 4 unless changed), and customers see the promise before ordering. A new order must be confirmed by then, or by its pickup or delivery time if that is sooner: the chef gets a reminder halfway, and an order still waiting at the deadline is cancelled automatically, with both sides told. Chefs hear about new orders, customer cancellations, new reviews and new dish requests. Customers get an emailed receipt, hear when their order is confirmed, being cooked, ready, or declined or cancelled, get a "How was your meal?" reminder a couple of hours after an order is done (only if a meal is still unrated), and hear when a chef answers their dish request; everyone who voted for a dish hears when the chef says yes. The important updates are also emailed; on the Account page people can switch off the optional emails (rate-your-meal reminders, dish-request answers, and for chefs new reviews and requests), while the bell always shows everything. Each notice is saved together with the change that caused it, and a helper inside the API server writes and sends emails every few seconds, trying again after 1, 5, 30 and 120 minutes if sending fails. Until launch nothing is really sent: every email lands in the practice mailbox at http://localhost:3000/dev/mailbox. Emails never include street addresses or phone numbers. On this computer the rate reminder comes 2 minutes after an order is completed (`RATE_REMINDER_DELAY_MINUTES`), so it is easy to try. "Forgot password?" on the login page emails a reset link that works once, for one hour; saving a new password logs out every device and sends a "your password was changed" email.
+**How notifications work (Phase 7b):** a bell in the menu bar shows what happened, with a count of unread items; opening it marks them read, and "See all" (`/notifications`) keeps the history. Each chef promises to confirm new orders within 1, 4, 12 or 24 hours (set under Hours & delivery; 4 unless changed), and customers see the promise before ordering. A new order must be confirmed by then, or by its pickup or delivery time if that is sooner: the chef gets a reminder halfway, and an order still waiting at the deadline is cancelled automatically, with both sides told. Chefs hear about new orders, customer cancellations, new reviews and new dish requests. Customers get an emailed receipt, hear when their order is confirmed, being cooked, ready, or declined or cancelled, get a "How was your meal?" reminder a couple of hours after an order is done (only if a meal is still unrated), and hear when a chef answers their dish request; everyone who voted for a dish hears when the chef says yes. The important updates are also emailed; on the Account page people can switch off the optional emails (rate-your-meal reminders, dish-request answers, and for chefs new reviews and requests), while the bell always shows everything. Each notice is saved together with the change that caused it, and a helper inside the API server writes and sends emails every few seconds, trying again after 1, 5, 30 and 120 minutes if sending fails. On your own computer nothing is really sent: every email lands in the practice mailbox at http://localhost:3000/dev/mailbox. Emails never include street addresses or phone numbers. On this computer the rate reminder comes 2 minutes after an order is completed (`RATE_REMINDER_DELAY_MINUTES`), so it is easy to try. "Forgot password?" on the login page emails a reset link that works once, for one hour; saving a new password logs out every device and sends a "your password was changed" email.
 
-Uploaded photos are stored in `backend/uploads/` during development (not committed to git). Production photo storage is set up in Phase 8.
+**How the preview works (Phase 8a):** the show-and-tell preview runs on Railway at https://neighborskitchen.app, with the sample chefs, meals and reviews. A banner on every page says orders are practice only, and search engines are asked not to list the site. Emails really go out (through Resend), except to the sample accounts' made-up addresses. The sample accounts use a private password on the preview site; `Password123` only works on your own computer. The sample meal photos are free-license stock photos (credits in `backend/prisma/sample-photos/CREDITS.md`). Every merge into `main` updates the site; see `DEPLOYMENT.md`.
+
+Uploaded photos are stored in `backend/uploads/` during development (not committed to git) and on a Railway volume on the live site.
 
 ## Environment Variables
 
@@ -274,6 +277,10 @@ Created automatically by `npm run setup` from `.env.example`. Key settings:
 - `PORT` - API port (default 4000)
 - `FRONTEND_URL` - Website URL allowed by CORS
 - `GEOCODER` - `census` (default: the free US Census Bureau address lookup, no key needed) or `off`
+- `PREVIEW_MODE` - `true` on the preview site (banner, no search engines, sample data allowed)
+- `TRUST_PROXY_HOPS` - `1` behind Railway's proxy, `0` on your computer
+- `EMAIL_TRANSPORT` / `RESEND_API_KEY` / `EMAIL_FROM` - `mailbox` here; `resend` plus its key on the live site
+- `DEMO_PASSWORD` - the sample accounts' password on the preview site
 
 ### Frontend (`frontend/.env`, optional)
 - `VITE_API_URL` - Leave empty in development; Vite forwards `/api` to the backend
@@ -301,7 +308,7 @@ ISC
 ## Documentation
 
 - `CLAUDE.md` - Comprehensive guide for AI assistants and developers
-- `DEPLOYMENT.md` - Deployment notes (updated in Phase 8)
+- `DEPLOYMENT.md` - How the preview is deployed and run on Railway
 
 ---
 

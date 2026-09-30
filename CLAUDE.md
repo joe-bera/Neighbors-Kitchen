@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide for Neighbors-Kitchen
 
-> **Last Updated:** 2026-09-28
-> **Repository Status:** Phases 1-4, 6 and 7 complete; Phase 5 waits for Stripe test keys (see "Build Plan" below)
+> **Last Updated:** 2026-09-30
+> **Repository Status:** Phases 1-4, 6, 7 and 8a (live preview) complete; Phase 5 waits for Stripe test keys; 8b (public launch) after payments
 
 ## Build Plan
 
@@ -14,7 +14,7 @@ The app is built in eight phases, each tested and runnable before the next start
 5. Payments: Stripe test mode, platform fee, chef payouts (waiting for the owner's Stripe test keys and Connect)
 6. Reviews, ratings and dish suggestions (done)
 7. Map of nearby chefs, notifications: bell and email (done)
-8. Put it live on the internet
+8. Put it live on the internet (8a done: show-and-tell preview at https://neighborskitchen.app; 8b: public launch)
 
 After each phase: run the full test suites, run the app and click through the new flows, update README, commit and push. Ask the project owner before signing up for, or paying for, any outside service, and say exactly which account or key is needed.
 
@@ -45,11 +45,12 @@ After each phase: run the full test suites, run the app and click through the ne
 ```
 Neighbors-Kitchen/
 ├── package.json        # root scripts: setup, dev, test, build, db:start/stop/seed
+├── Dockerfile, railway.json  # the live site (Railway)
 ├── frontend/           # React 19 + Vite, port 3000 (proxies /api to 4000)
 │   └── src/            # components/{layout,auth,common,meal,chef,cart,order,feedback,location,notifications}, pages/ (pages/chef = dashboard), services/, store/, hooks/, types/, utils/
 ├── backend/            # Express 5 + Prisma, port 4000
-│   ├── src/            # app.ts, index.ts, config/, controllers/, routes/, services/, jobs/, middleware/, validators/, lib/, utils/, types/
-│   ├── prisma/         # schema.prisma, migrations/ (committed), seed.ts
+│   ├── src/            # app.ts, index.ts, config/, controllers/, routes/, services/, jobs/, middleware/, validators/, lib/, utils/, types/, web/ (website, security)
+│   ├── prisma/         # schema.prisma, migrations/ (committed), seed.ts, sample-photos/ (sample meal photos + CREDITS.md)
 │   ├── data/           # zip-centroids.csv (Census ZIP code locations, committed)
 │   ├── scripts/        # db.mjs (local Postgres), ensure-env.mjs, build-zip-centroids.mjs
 │   └── tests/          # Vitest + Supertest API tests
@@ -78,6 +79,17 @@ Key conventions already in place:
 - `optionalAuth` reads the user when an `Authorization` header is sent and lets anonymous visitors through; use it for public endpoints that personalise a little (e.g. "you voted"). On the frontend, `useOwnKitchenId()` tells a chef's page that the viewer owns it.
 - Location (`services/geo.ts`, `zipCodes.ts`, `geocoding.ts`, `locationService.ts`): `chef_profiles.latitude/longitude` are exact and private; `approx_latitude/approx_longitude` are the public area center (moved 0.1-0.3 mi, re-picked only when the street, city, state or ZIP changes). Every public distance, the distance filter and the delivery check are measured from the area center with `distanceMiles` and rounded with `roundToTenth`; `toArea()` is the only public shape. `location_precision` records ADDRESS or ZIP_CODE: ZIP-only (or unrecorded) kitchens are looked up again on every save and are never measured for delivery; a delivery address the geocoder cannot find is judged by its typed ZIP code (`zipFromAddress`: exactly one 5-digit number that is not the leading house number) and refused only beyond the limit plus `ZIP_MARGIN_MILES` (5), otherwise let through with no stored distance; `relocateKitchen` keeps the stored circle when a new lookup lands within 0.05 mi of the stored spot. The Census geocoder is called only when a chef saves an address or a customer places a delivery order, never from public endpoints; one 6-second limit covers the whole lookup, including a single retry without the dash for house numbers like "73-510". Tests run with `GEOCODER=off` and mock `services/geocoding.js`. ZIP lookups use the committed `backend/data/zip-centroids.csv`. Map components (`components/location/ChefsMap`, `AreaMap`) are only imported with `React.lazy`.
 - Notifications (`services/notifications/`): every bell item and email is created by `notify(tx, recipient, kind, data)` inside the transaction of the change it describes (load recipients with `recipientSelect`; order data with `orderNoticeData` / `orderParties`). `kinds.ts` holds each kind's rules (bell, email, which user switch turns the email off) and data type; `bellText.ts` and `emailTemplates.ts` hold the wording (user text is HTML-escaped; emails never contain street addresses, phone numbers or, for customers, the platform fee; copy never guesses pronouns). Emails are rows in `emails`, written and sent by `deliverDueEmails`, which `jobs/backgroundJobs.ts` runs every `JOBS_INTERVAL_MS` (started only from `index.ts`, never in tests); failed sends retry after 1, 5, 30 and 120 minutes. `EMAIL_TRANSPORT=mailbox` sends nothing; the practice mailbox (`/api/v1/dev/emails`, page `/dev/mailbox`) exists only outside production. Backend tests read notices with `tests/notificationHelpers.ts` (`bellFor`, `emailsFor`). Optional emails are switched off with users.email_rate_reminders / email_dish_request_news / email_kitchen_feedback (the bell always shows everything). Completing an order sets rate_reminder_at; sendRateReminders (reviewService) sends the reminder only if a meal is unrated. Dish-request answers notify the asker when the status or reply changes and other voters only when the status first becomes ACCEPTED. New orders get confirm_by = min(placed + the chef's confirm_within_hours, scheduledFor) and chef_reminder_at halfway (confirmationTimes in orderService); sendChefReminders and expireOverdueOrders act on them with conditional updates, and orders with no confirm_by never expire. Password reset: users.password_reset_token holds a unique SHA-256 hash; links last 1 hour, one reset email per account per 2 minutes; resetting clears the lock and every refresh token and sends PASSWORD_CHANGED. Cut people's text (excerpts, initials) only at whole characters with `graphemes` (`utils/text.ts`): half an emoji is refused by the database and would fail the whole change. Timed tasks handle each order in its own try/catch so one bad order never blocks the rest. Backend tests reach the app through `tests/loopbackServer.ts`, which binds each test server to 127.0.0.1 (other programs on a developer's computer can hold the same port numbers).
+- Live preview (Phase 8a, `docs/superpowers/specs/2026-09-29-phase8a-live-preview-design.md`):
+  - **Packaging.** One Docker image (`Dockerfile`; Railway settings in `railway.json`, deploys from `main`) runs everything; it also carries `backend/src`, because the pre-deploy seed runs from TypeScript with tsx. In production `createApp(appOptionsFromEnv())` also serves `frontend/dist` (`web/website.ts`): `/assets` immutable, and `index.html` no-cache for every GET/HEAD outside `/api`, `/uploads` and `/health`.
+  - **Preview mode.** `PREVIEW_MODE=true` adds `<meta name="nk-preview" content="true" />` (read by `PreviewBanner`), a Disallow `robots.txt` and `X-Robots-Tag: noindex, nofollow`.
+  - **Settings.** `readEnv` refuses unsafe production settings (`productionProblems`).
+  - **Proxy.** `TRUST_PROXY_HOPS` (1 on Railway) sets trust proxy and logs one "Proxy check" line.
+  - **Headers.** Helmet's CSP allows only our files plus `https://tile.openstreetmap.org`; `Referrer-Policy` is `strict-origin-when-cross-origin`, because OpenStreetMap's tiles need a Referer.
+  - **Email.** `EMAIL_TRANSPORT=resend` uses `resendTransport` (10 s limit, `Idempotency-Key` = email id). Real transports mark reserved addresses (`isReservedAddress`) `SKIPPED`, and subjects go through `cleanSubject`.
+  - **Reset links.** They put the token after `#`, and the reset endpoint clears the refresh cookie.
+  - **Sample data.** It loads only through `sampleDataPlan()`: never on a live site unless it is the preview with `DEMO_PASSWORD` of at least 12 characters. `npm run db:seed:preview` loads it once (Railway's pre-deploy).
+  - **Sample photos.** They live in `backend/prisma/sample-photos/<samplePhotoId(name)>.webp` (credits in `CREDITS.md`) and are served at `/uploads/meals/` after `UPLOAD_DIR`.
+  - **Stopping.** SIGTERM stops the helper after its pass, lets requests finish (25 s), then disconnects (`lib/shutdown.ts`).
 
 ### Recommended Structure
 For a full-stack marketplace application, we recommend this structure:
@@ -416,7 +428,7 @@ npm 11 blocks dependency install scripts unless they are listed in `allowScripts
 ### Environment Variables
 
 #### Backend (.env)
-See `backend/.env.example` (the source of truth). Currently used: `NODE_ENV`, `PORT` (4000), `FRONTEND_URL`, `DATABASE_URL`, `JWT_SECRET` (32+ chars), `JWT_EXPIRE`, `REFRESH_TOKEN_TTL_DAYS`, `BCRYPT_ROUNDS`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `GEOCODER`, `EMAIL_TRANSPORT`, `EMAIL_FROM`, `JOBS_INTERVAL_MS`, `RATE_REMINDER_DELAY_MINUTES`. Later phases add Stripe, email, maps and image-storage keys; add each new one to `.env.example` and to the schema in `src/config/env.ts`.
+See `backend/.env.example` (the source of truth). Currently used: `NODE_ENV`, `PORT` (4000), `FRONTEND_URL`, `DATABASE_URL`, `JWT_SECRET` (32+ chars), `JWT_EXPIRE`, `REFRESH_TOKEN_TTL_DAYS`, `BCRYPT_ROUNDS`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `UPLOAD_DIR`, `PLATFORM_FEE_PERCENT`, `GEOCODER`, `EMAIL_TRANSPORT`, `EMAIL_FROM`, `JOBS_INTERVAL_MS`, `RATE_REMINDER_DELAY_MINUTES`, and for the live site `PREVIEW_MODE`, `TRUST_PROXY_HOPS`, `WEB_DIST_DIR`, `RESEND_API_KEY`, `DEMO_PASSWORD` (see `DEPLOYMENT.md`). Later phases add Stripe, maps and image-storage keys; add each new one to `.env.example` and to the schema in `src/config/env.ts`.
 
 #### Frontend (.env)
 ```bash
@@ -1248,5 +1260,5 @@ Track these key metrics:
 
 **Note:** This is a living document. As Neighbors-Kitchen develops, this guide should be updated to reflect the actual codebase, conventions, and workflows established by the team.
 
-**Last Updated:** 2026-09-28
+**Last Updated:** 2026-09-30
 **Contributors:** AI Assistant (Initial comprehensive guide for chef marketplace platform; Phases 1-4 and 6)
