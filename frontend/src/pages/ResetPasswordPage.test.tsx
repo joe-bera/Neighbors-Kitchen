@@ -13,11 +13,24 @@ function LoginStub() {
   return <p>Login page: {(location.state as { message?: string } | null)?.message}</p>
 }
 
+function AddressBar() {
+  const location = useLocation()
+  return <p>Address: {location.pathname + location.search + location.hash}</p>
+}
+
 function renderAt(url: string) {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <Routes>
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route
+          path="/reset-password"
+          element={
+            <>
+              <ResetPasswordPage />
+              <AddressBar />
+            </>
+          }
+        />
         <Route path="/login" element={<LoginStub />} />
       </Routes>
     </MemoryRouter>,
@@ -41,6 +54,23 @@ afterEach(() => {
 })
 
 describe('ResetPasswordPage', () => {
+  it('reads the token after the # in new emails', async () => {
+    reset.mockResolvedValue(undefined)
+    renderAt('/reset-password#token=abc123')
+
+    submit('Tacos5ever', 'Tacos5ever')
+
+    await screen.findByText('Login page: Your password was changed. Log in with your new password.')
+    expect(reset).toHaveBeenCalledWith('abc123', 'Tacos5ever')
+  })
+
+  it('takes the token out of the address bar', async () => {
+    renderAt('/reset-password#token=abc123')
+
+    await screen.findByText('Address: /reset-password')
+    screen.getByLabelText('New password')
+  })
+
   it('saves the new password and sends the person to log in', async () => {
     reset.mockResolvedValue(undefined)
     renderAt('/reset-password?token=abc123')

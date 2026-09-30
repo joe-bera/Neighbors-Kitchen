@@ -60,5 +60,7 @@ export async function forgotPassword(req: Request, res: Response) {
 
 export async function resetPassword(req: Request, res: Response) {
   await authService.resetPassword(req.body.token, req.body.password);
+  // Every session was logged out; this browser forgets its cookie too, whoever it belonged to.
+  res.clearCookie(REFRESH_COOKIE, refreshCookieOptions);
   res.status(200).json({ success: true, data: null, message: 'Your password was changed. Log in with your new password.' });
 }

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { resetPassword } from '../services/accountService'
@@ -25,11 +25,16 @@ type ResetValues = z.infer<typeof resetSchema>
 
 const INCOMPLETE_LINK = 'This link is not complete. Open it from the email again, or ask for a new one.'
 
+/** The token from the email link: after the # (emails from 2026-09-29 on) or in ?token= (older emails). */
+function tokenFromLink(hash: string, search: string): string {
+  return new URLSearchParams(hash.slice(1)).get('token') ?? new URLSearchParams(search).get('token') ?? ''
+}
+
 export default function ResetPasswordPage() {
   usePageTitle('Choose a new password')
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') ?? ''
+  const location = useLocation()
+  const [token] = useState(() => tokenFromLink(location.hash, location.search))
   const [linkProblem, setLinkProblem] = useState<string | null>(token ? null : INCOMPLETE_LINK)
   const [formError, setFormError] = useState<string | null>(null)
   const {
@@ -37,6 +42,11 @@ export default function ResetPasswordPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ResetValues>({ resolver: zodResolver(resetSchema) })
+
+  // Take the token out of the address bar, so it is not left in the history or in a shared screenshot.
+  useEffect(() => {
+    if (location.hash || location.search) navigate(location.pathname, { replace: true })
+  }, [location.hash, location.search, location.pathname, navigate])
 
   const onSubmit = async ({ password }: ResetValues) => {
     setFormError(null)

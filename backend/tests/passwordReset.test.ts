@@ -101,6 +101,19 @@ describe('POST /auth/forgot-password', () => {
 });
 
 describe('POST /auth/reset-password', () => {
+  it('signs out the browser it was saved in, even if another account was signed in there', async () => {
+    const jane = await register();
+    await forgot('jane@example.com');
+
+    const res = await request(app)
+      .post(`${API}/auth/reset-password`)
+      .set('Cookie', jane.refreshCookie)
+      .send({ token: await latestToken(jane.userId), password: 'NewTacos5' });
+
+    expect(res.status).toBe(200);
+    expect(res.get('Set-Cookie')).toEqual([expect.stringMatching(/^nk_refresh=; Path=\/api\/v1\/auth; Expires=Thu, 01 Jan 1970 00:00:00 GMT/)]);
+  });
+
   it('sets the new password, and the link works only once', async () => {
     const jane = await register();
     await forgot('jane@example.com');

@@ -75,7 +75,7 @@ describe('renderEmail', () => {
   it('puts the reset token in the link, with the reassurance in the footer', () => {
     const email = renderEmail('PASSWORD_RESET', { firstName: 'Dana', token: 'abc-DEF_123' });
     expect(email.text).toContain('Hi Dana,');
-    expect(email.text).toContain('Choose a new password: http://localhost:3000/reset-password?token=abc-DEF_123');
+    expect(email.text).toContain('Choose a new password: http://localhost:3000/reset-password#token=abc-DEF_123');
     expect(email.text).toContain("If you didn't ask for this, you can ignore this email. Your password stays the same.");
     expect(email.text).not.toContain("You're getting this email because");
   });

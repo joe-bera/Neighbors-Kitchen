@@ -174,7 +174,8 @@ const CONTENT: { [K in EmailKind]: (data: NoticeDataByKind[K]) => EmailContent }
       `Hi ${data.firstName}, someone (hopefully you) asked to reset the password for your Neighbors Kitchen account.`,
       'The button works once, for 1 hour.',
     ],
-    button: { label: 'Choose a new password', path: `/reset-password?token=${encodeURIComponent(data.token ?? '')}` },
+    // After #, so the token never reaches a server log or another site's Referer.
+    button: { label: 'Choose a new password', path: `/reset-password#token=${encodeURIComponent(data.token ?? '')}` },
     footerNote: "If you didn't ask for this, you can ignore this email. Your password stays the same.",
   }),
   PASSWORD_CHANGED: (data) => ({
