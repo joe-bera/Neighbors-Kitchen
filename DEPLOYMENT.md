@@ -17,9 +17,9 @@ Design: `docs/superpowers/specs/2026-09-29-phase8a-live-preview-design.md`.
 1. Work happens on a branch and is merged into `main` through a pull request.
 2. Railway builds the Docker image from the new commit on `main`.
 3. The pre-deploy command (`npm run db:predeploy`) runs `npm run db:migrate:deploy` (database changes), then `npm run db:seed:preview`, which loads the sample data the first time only.
-4. The new version starts. Once `/health` answers, Railway switches visitors to it and stops the old one (which finishes its current work first). Because of the photo volume, the site pauses for up to about a minute.
+4. Railway stops the old version (it finishes its current work first), then starts the new one. The photo volume can only be attached to one version at a time, so the site pauses, usually for under a minute. Visitors reach the new version once `/health` answers.
 
-If the build or the pre-deploy command fails, the old version keeps running.
+If the build or the pre-deploy command fails, the old version keeps running. If the new version starts but never answers `/health` (Railway waits up to 2 minutes), the deploy is marked failed and the site stays down, because the old version was already stopped: roll back (see "Everyday tasks").
 
 ## Settings (Railway > web > Variables)
 
@@ -45,6 +45,7 @@ Never paste the secret values into chat or into the repo. The app refuses to sta
 - **See what is happening:** Railway > web > Deployments > View logs, or `railway logs` in the project folder. One line after each start says whether visitors' addresses look public (the proxy check).
 - **Reset the sample data:** `railway ssh` (service `web`), then `npm run db:seed`. This restores the sample chefs, meals, orders and reviews; visitors' own accounts stay.
 - **Change a setting:** edit it under Variables; Railway redeploys.
+- **Change the sample accounts' password:** change `DEMO_PASSWORD` under Variables and wait for the redeploy, then `railway ssh` (service `web`) and `npm run db:seed`. The redeploy alone keeps the old password, because the sample data is only loaded once. The full seed also resets the sample data (as above) and replaces Chris's and Maria's bell items. Anyone already signed in to a sample account stays signed in for up to 7 days.
 - **Roll back:** Railway > web > Deployments > pick the previous one > Redeploy.
 
 ## Costs

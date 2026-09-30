@@ -94,7 +94,7 @@ Everything else keeps its default (`GEOCODER=census`, `RATE_REMINDER_DELAY_MINUT
 
 1. A merge into `main` makes Railway build the image.
 2. Pre-deploy runs in the new image before it takes any traffic: `prisma migrate deploy`, then the preview seed (`--preview-if-empty`, see "Sample data"). If either fails, the deploy stops and the running version stays.
-3. The new version starts. Railway waits for `/health` to answer, then switches traffic and sends SIGTERM to the old version.
+3. Because of the photo volume, Railway first stops the old version (SIGTERM), then starts the new one and sends traffic once `/health` answers. If `/health` never answers, the deploy is marked failed and the site stays down until a rollback. (Corrected after the final review: a volume can only be attached to one version at a time.)
 
 ## Backend
 
